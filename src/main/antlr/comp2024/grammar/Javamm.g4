@@ -27,6 +27,7 @@ COMMA : ',';
 NEW : 'new';
 LEN : 'length';
 DOT : '.';
+VAR_ARGS : '...';
 
 CLASS : 'class' ;
 EXTENDS : 'extends' ;
@@ -78,7 +79,7 @@ varDecl
 
 type
     : type LSQUARE RSQUARE #Array //
-    | value= INT '...' #VarArgs //
+    | value= INT VAR_ARGS #VarArgs //
     | value= BOOLEAN #Boolean //
     | value= INT #Integer //
     | value= STRING #String //
