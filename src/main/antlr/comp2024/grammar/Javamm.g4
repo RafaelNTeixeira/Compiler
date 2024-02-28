@@ -23,6 +23,10 @@ LESS : '<' ;
 LE : '<=' ;
 GREATER : '>' ;
 GE : '>=' ;
+COMMA : ',';
+NEW : 'new';
+LEN : 'length';
+DOT : '.';
 
 CLASS : 'class' ;
 EXTENDS : 'extends' ;
@@ -57,7 +61,7 @@ program
     ;
 
 importDeclaration
-    : IMPORT value+=ID ('.' value+=ID)* SEMI #ImportStatment
+    : IMPORT value+=ID (DOT value+=ID)* SEMI #ImportStatment
     ;
 
 classDecl
@@ -87,7 +91,7 @@ type
 methodDecl locals[boolean isPublic=false]
     : (PUBLIC {$isPublic=true;})?
         type name=ID
-        LPAREN param? (',' param)* RPAREN
+        LPAREN param? (COMMA param)* RPAREN
         LCURLY varDecl* stmt* RCURLY
     ;
 
@@ -114,13 +118,13 @@ stmt
 expr
     : value= NOT expr #Negate //
     | LPAREN expr RPAREN #Parentesis
-    | name=ID LPAREN (expr (',' expr)* )? RPAREN #FunctionCall //
-    | expr '.' name=ID LPAREN (expr (',' expr)* )? RPAREN #FunctionCall //
-    | 'new' INT LSQUARE expr RSQUARE #NewArray //
-    | 'new' name=ID LPAREN (expr (',' expr)* )? RPAREN #NewClass // Pode ser feita assim?
+    | name=ID LPAREN (expr (COMMA expr)* )? RPAREN #FunctionCall //
+    | expr DOT name=ID LPAREN (expr (COMMA expr)* )? RPAREN #FunctionCall //
+    | NEW INT LSQUARE expr RSQUARE #NewArray //
+    | NEW name=ID LPAREN (expr (COMMA expr)* )? RPAREN #NewClass // Pode ser feita assim?
     | expr LSQUARE expr RSQUARE #ArrayAccess //
-    | LSQUARE ( expr ( ',' expr )* )? RSQUARE #ArrayInit //
-    | expr '.' 'length' #Length //
+    | LSQUARE ( expr ( COMMA expr )* )? RSQUARE #ArrayInit //
+    | expr DOT LEN #Length //
     | expr op=(MUL | DIV) expr #BinaryExpr //
     | expr op=(ADD | SUB) expr #BinaryExpr //
     | expr op=('<=' | '<' | '>' | '>=' | '==' | '!=' | '+=' | '-=' | '*=' | '/=') expr #BinaryOp //
