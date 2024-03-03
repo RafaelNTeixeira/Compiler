@@ -45,7 +45,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         setDefaultVisit(this::defaultVisit);
     }
 
-
     private String visitAssignStmt(JmmNode node, Void unused) {
 
         var lhs = exprVisitor.visit(node.getJmmChild(0));
@@ -79,7 +78,6 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
 
     private String visitReturn(JmmNode node, Void unused) {
-
         String methodName = node.getAncestor(METHOD_DECL).map(method -> method.get("name")).orElseThrow();
         Type retType = table.getReturnType(methodName);
 

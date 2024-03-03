@@ -6,11 +6,38 @@ import pt.up.fe.comp.jmm.ast.JmmNode;
 
 public class TypeUtils {
 
+    private static final String BOOLEAN_TYPE_NAME = "boolean";
     private static final String INT_TYPE_NAME = "int";
+    private static final String STRING_TYPE_NAME = "String";
+    private static final String DOUBLE_TYPE_NAME = "double";
+    private static final String FLOAT_TYPE_NAME = "float";
+    private static final String VOID_TYPE_NAME = "void";
+    private static final String ID_TYPE_NAME = "id";
 
+    public static String getTypeName(String type) {
+        switch (type) {
+            case "boolean":
+                return BOOLEAN_TYPE_NAME;
+            case "int":
+                return INT_TYPE_NAME;
+            case "String":
+                return STRING_TYPE_NAME;
+            case "double":
+                return DOUBLE_TYPE_NAME;
+            case "float":
+                return FLOAT_TYPE_NAME;
+            case "void":
+                return VOID_TYPE_NAME;
+            case "id":
+                return ID_TYPE_NAME;
+            default:
+                throw new IllegalArgumentException("Such type doesn't exist: " + type);
+        }
+    }
     public static String getIntTypeName() {
         return INT_TYPE_NAME;
     }
+
 
     /**
      * Gets the {@link Type} of an arbitrary expression.

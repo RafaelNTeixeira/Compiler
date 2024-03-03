@@ -62,7 +62,7 @@ program
     ;
 
 importDeclaration
-    : IMPORT value+=ID (DOT value+=ID)* SEMI #ImportStatment
+    : IMPORT importName+=ID (DOT importName+=ID)* SEMI #ImportStatment
     ;
 
 classDecl
@@ -94,10 +94,11 @@ methodDecl locals[boolean isPublic=false]
         type name=ID
         LPAREN param? (COMMA param)* RPAREN
         LCURLY varDecl* stmt* RCURLY
+    | mainDecl
     ;
 
 mainDecl
-    : (PUBLIC)? STATIC VOID MAIN LPAREN STRING LSQUARE RSQUARE arg=ID RPAREN
+    : (PUBLIC)? STATIC VOID MAIN LPAREN STRING LSQUARE RSQUARE name=ID RPAREN
         LCURLY varDecl* stmt* RCURLY
     ;
 

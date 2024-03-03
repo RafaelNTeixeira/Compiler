@@ -1,1 +1,6 @@
-a=b;
+import io;
+import List;
+
+class T{
+
+}
