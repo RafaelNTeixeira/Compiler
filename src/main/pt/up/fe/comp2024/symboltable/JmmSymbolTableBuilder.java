@@ -18,8 +18,22 @@ public class JmmSymbolTableBuilder {
         var classDecl = root.getJmmChild(0);
         var importDecl = root.getChildren("ImportStatment");
         var classDeclarations = root.getChildren("ClassDecl");
-        String className = "";
-        String superClassName = "";
+
+        List <String> importNames = buildImports(importDecl);
+
+        List <String> superAndClassNames = buildClassAndSuper(classDeclarations);
+        String className = superAndClassNames.get(0);
+        String superClassName = superAndClassNames.get(1);
+
+        var methods = buildMethods(classDecl);
+        var returnTypes = buildReturnTypes(classDecl);
+        var params = buildParams(classDecl);
+        var locals = buildLocals(classDecl);
+
+        return new JmmSymbolTable(className, superClassName, methods, returnTypes, params, locals, importNames);
+    }
+
+    private static List <String> buildImports(List<JmmNode> importDecl) {
         List <String> importNames = new ArrayList<>();
         if (!importDecl.isEmpty()) {
             for (JmmNode importNode : importDecl) {
@@ -31,6 +45,12 @@ public class JmmSymbolTableBuilder {
                 }
             }
         }
+        return importNames;
+    }
+
+    private static List <String> buildClassAndSuper(List<JmmNode> classDeclarations) {
+        String className = "";
+        String superClassName = "";
         if (!classDeclarations.isEmpty()) {
             for (JmmNode classNode : classDeclarations) {
                 SpecsCheck.checkArgument(CLASS_DECL.check(classNode), () -> "Expected a class declaration: " + classNode);
@@ -44,13 +64,10 @@ public class JmmSymbolTableBuilder {
                 }
             }
         }
-
-        var methods = buildMethods(classDecl);
-        var returnTypes = buildReturnTypes(classDecl);
-        var params = buildParams(classDecl);
-        var locals = buildLocals(classDecl);
-
-        return new JmmSymbolTable(className, superClassName, methods, returnTypes, params, locals, importNames);
+        List<String> result = new ArrayList<>();
+        result.add(className);
+        result.add(superClassName);
+        return result;
     }
 
     private static Map<String, Type> buildReturnTypes(JmmNode classDecl) {
