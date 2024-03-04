@@ -16,8 +16,8 @@ public class JmmSymbolTableBuilder {
 
     public static JmmSymbolTable build(JmmNode root) {
         var classDecl = root.getJmmChild(0);
-        var importDecl = root.getChildren("ImportStatment");
-        var classDeclarations = root.getChildren("ClassDecl");
+        var importDecl = root.getChildren("ImportStatment"); // Nodes relacionados com declarações de imports
+        var classDeclarations = root.getChildren("ClassDecl"); // Nodes relacionados com declarações de classes
 
         List <String> importNames = buildImports(importDecl);
 
@@ -36,11 +36,11 @@ public class JmmSymbolTableBuilder {
     private static List <String> buildImports(List<JmmNode> importDecl) {
         List <String> importNames = new ArrayList<>();
         if (!importDecl.isEmpty()) {
-            for (JmmNode importNode : importDecl) {
+            for (JmmNode importNode : importDecl) { // percorre todos os nodes relacionados com declarações de imports
                 SpecsCheck.checkArgument(IMPORT_STATMENT.check(importNode), () -> "Expected an import declaration: " + importNode);
-                for (String attribute : importNode.getAttributes()) {
-                    if (attribute.equals("importName")) {
-                        importNames.add(attribute);
+                for (String attribute : importNode.getAttributes()) { // percorre todos os atributos de um node
+                    if (attribute.equals("importName")) { // encontra o atributo importName definido na gramática
+                        importNames.add(attribute); // guarda-o
                     }
                 }
             }
@@ -52,13 +52,13 @@ public class JmmSymbolTableBuilder {
         String className = "";
         String superClassName = "";
         if (!classDeclarations.isEmpty()) {
-            for (JmmNode classNode : classDeclarations) {
+            for (JmmNode classNode : classDeclarations) { // percorre todos os nodes relacionados com declarações de classes
                 SpecsCheck.checkArgument(CLASS_DECL.check(classNode), () -> "Expected a class declaration: " + classNode);
-                for (String attribute : classNode.getAttributes()) {
-                    if (attribute.equals("className")) {
+                for (String attribute : classNode.getAttributes()) { // percorre todos os atributos de um node
+                    if (attribute.equals("className")) { // encontra o atributo className definido na gramática
                         className = classNode.get("className");
                     }
-                    else if (attribute.equals("extendedClass")) {
+                    else if (attribute.equals("extendedClass")) { // encontra o atributo extendedClass definido na gramatica
                         superClassName = classNode.get("extendedClass");
                     }
                 }
