@@ -66,8 +66,8 @@ importDeclaration
     ;
 
 classDecl
-    : CLASS name=ID
-        (EXTENDS name=ID)?
+    : CLASS className=ID
+        (EXTENDS extendedClass=ID)?
         LCURLY
         (varDecl)* (methodDecl)*
         RCURLY

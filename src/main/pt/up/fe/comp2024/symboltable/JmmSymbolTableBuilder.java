@@ -15,22 +15,34 @@ import static pt.up.fe.comp2024.ast.Kind.*;
 public class JmmSymbolTableBuilder {
 
     public static JmmSymbolTable build(JmmNode root) {
-        var importDecl = root.getChildren("ImportStatment");
         var classDecl = root.getJmmChild(0);
+        var importDecl = root.getChildren("ImportStatment");
+        var classDeclarations = root.getChildren("ClassDecl");
         String className = "";
+        String superClassName = "";
         List <String> importNames = new ArrayList<>();
-        if (!root.getChildren("ImportStatment").isEmpty()) {
+        if (!importDecl.isEmpty()) {
             for (JmmNode importNode : importDecl) {
-                SpecsCheck.checkArgument(IMPORT_STATMENT.check(importNode), () -> "Expected an import declaration: " + classDecl);
+                SpecsCheck.checkArgument(IMPORT_STATMENT.check(importNode), () -> "Expected an import declaration: " + importNode);
                 for (String attribute : importNode.getAttributes()) {
                     if (attribute.equals("importName")) {
-                        importNames.add(classDecl.get("importName"));
+                        importNames.add(attribute);
                     }
                 }
             }
-        } else {
-            SpecsCheck.checkArgument(CLASS_DECL.check(classDecl), () -> "Expected a class declaration: " + classDecl);
-            className = classDecl.get("name");
+        }
+        if (!classDeclarations.isEmpty()) {
+            for (JmmNode classNode : classDeclarations) {
+                SpecsCheck.checkArgument(CLASS_DECL.check(classNode), () -> "Expected a class declaration: " + classNode);
+                for (String attribute : classNode.getAttributes()) {
+                    if (attribute.equals("className")) {
+                        className = classNode.get("className");
+                    }
+                    else if (attribute.equals("extendedClass")) {
+                        superClassName = classNode.get("extendedClass");
+                    }
+                }
+            }
         }
 
         var methods = buildMethods(classDecl);
@@ -38,7 +50,7 @@ public class JmmSymbolTableBuilder {
         var params = buildParams(classDecl);
         var locals = buildLocals(classDecl);
 
-        return new JmmSymbolTable(className, methods, returnTypes, params, locals, importNames);
+        return new JmmSymbolTable(className, superClassName, methods, returnTypes, params, locals, importNames);
     }
 
     private static Map<String, Type> buildReturnTypes(JmmNode classDecl) {
