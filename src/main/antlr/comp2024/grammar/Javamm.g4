@@ -74,7 +74,8 @@ classDecl
     ;
 
 varDecl
-    : type name=ID SEMI
+    :
+    type name=ID SEMI
     ;
 
 type
@@ -91,14 +92,14 @@ type
 
 methodDecl locals[boolean isPublic=false]
     : (PUBLIC {$isPublic=true;})?
-        type name=ID
+        type methodName=ID
         LPAREN param? (COMMA param)* RPAREN
         LCURLY varDecl* stmt* RCURLY
     | mainDecl
     ;
 
 mainDecl
-    : (PUBLIC)? STATIC VOID MAIN LPAREN STRING LSQUARE RSQUARE name=ID RPAREN
+    : (PUBLIC)? STATIC VOID MAIN LPAREN STRING LSQUARE RSQUARE methodName=ID RPAREN
         LCURLY varDecl* stmt* RCURLY
     ;
 
@@ -120,10 +121,10 @@ stmt
 expr
     : value= NOT expr #Negate //
     | LPAREN expr RPAREN #Parentesis
-    | name=ID LPAREN (expr (COMMA expr)* )? RPAREN #FunctionCall //
-    | expr DOT name=ID LPAREN (expr (COMMA expr)* )? RPAREN #FunctionCall //
+    | methodName=ID LPAREN (expr (COMMA expr)* )? RPAREN #FunctionCall //
+    | expr DOT methodName=ID LPAREN (expr (COMMA expr)* )? RPAREN #FunctionCall //
     | NEW INT LSQUARE expr RSQUARE #NewArray //
-    | NEW name=ID LPAREN (expr (COMMA expr)* )? RPAREN #NewClass // Pode ser feita assim?
+    | NEW className=ID LPAREN (expr (COMMA expr)* )? RPAREN #NewClass // Pode ser feita assim?
     | expr LSQUARE expr RSQUARE #ArrayAccess //
     | LSQUARE ( expr ( COMMA expr )* )? RSQUARE #ArrayInit //
     | expr DOT LEN #Length //

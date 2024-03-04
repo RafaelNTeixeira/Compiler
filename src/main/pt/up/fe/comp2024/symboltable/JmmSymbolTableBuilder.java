@@ -11,6 +11,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static pt.up.fe.comp2024.ast.Kind.*;
+import static pt.up.fe.comp2024.ast.TypeUtils.*;
 
 public class JmmSymbolTableBuilder {
 
@@ -18,6 +19,8 @@ public class JmmSymbolTableBuilder {
         var classDecl = root.getJmmChild(0);
         var importDecl = root.getChildren("ImportStatment"); // Nodes relacionados com declarações de imports
         var classDeclarations = root.getChildren("ClassDecl"); // Nodes relacionados com declarações de classes
+        var fieldDeclarations = root.getDescendants("VarDecl"); // Retira tudo o que exista de VarDecl
+        var methodDeclarations = root.getDescendants("MethodDecl"); // Retira tudo o que exista de declarações de métodos (funções)
 
         List <String> importNames = buildImports(importDecl);
 
@@ -25,12 +28,14 @@ public class JmmSymbolTableBuilder {
         String className = superAndClassNames.get(0);
         String superClassName = superAndClassNames.get(1);
 
+        List <Symbol> fieldNames = buildFields(fieldDeclarations);
+
         var methods = buildMethods(classDecl);
         var returnTypes = buildReturnTypes(classDecl);
         var params = buildParams(classDecl);
         var locals = buildLocals(classDecl);
 
-        return new JmmSymbolTable(className, superClassName, methods, returnTypes, params, locals, importNames);
+        return new JmmSymbolTable(className, superClassName, fieldNames, methods, returnTypes, params, locals, importNames);
     }
 
     private static List <String> buildImports(List<JmmNode> importDecl) {
@@ -70,13 +75,62 @@ public class JmmSymbolTableBuilder {
         return result;
     }
 
+    private static List <Symbol> buildFields(List<JmmNode> fieldDeclarations) {
+        List<Symbol> fields = new ArrayList<>();
+        Symbol symbol = null;
+        Type type = null;
+        String fieldName = "";
+        for (JmmNode fieldNode : fieldDeclarations) {
+            if (fieldNode.getParent().getKind().equals("ClassDecl")) {
+                for (JmmNode valueField : fieldNode.getChildren()) {
+                    fieldName = valueField.get("value");
+                    switch (valueField.getKind()) {
+                        case "Boolean":
+                            type = new Type("boolean", false);
+                            symbol = new Symbol(type, fieldName);
+                            break;
+                        case "Integer":
+                            type = new Type("int", false);
+                            symbol = new Symbol(type, fieldName);
+                            break;
+                        case "Float":
+                            type = new Type("float", false);
+                            symbol = new Symbol(type, fieldName);
+                            break;
+                        case "Double":
+                            type = new Type("double", false);
+                            symbol = new Symbol(type, fieldName);
+                            break;
+                        case "String":
+                            type = new Type("String", false);
+                            symbol = new Symbol(type, fieldName);
+                            break;
+                        case "Void":
+                            type = new Type("void", false);
+                            symbol = new Symbol(type, fieldName);
+                            break;
+                        case "Id":
+                            type = new Type("id", false);
+                            symbol = new Symbol(type, fieldName);
+                            break;
+                        default:
+                            type = new Type(fieldName, false);
+                            symbol = new Symbol(type, fieldName);
+                    }
+                    fields.add(symbol);
+                }
+            }
+        }
+        return fields;
+    }
+
     private static Map<String, Type> buildReturnTypes(JmmNode classDecl) {
         // TODO: Simple implementation that needs to be expanded
 
         Map<String, Type> map = new HashMap<>();
 
         classDecl.getChildren(METHOD_DECL).stream()
-                .forEach(method -> map.put(method.get("name"), new Type(TypeUtils.getIntTypeName(), false)));
+                .forEach(method -> map.put(method.get("name"), new Type(getIntTypeName(), false)));
 
         return map;
     }
@@ -86,7 +140,7 @@ public class JmmSymbolTableBuilder {
 
         Map<String, List<Symbol>> map = new HashMap<>();
 
-        var intType = new Type(TypeUtils.getIntTypeName(), false); // do tipo 'int'
+        var intType = new Type(getIntTypeName(), false); // do tipo 'int'
 
         classDecl.getChildren(METHOD_DECL).stream()
                 .forEach(method -> map.put(method.get("name"), Arrays.asList(new Symbol(intType, method.getJmmChild(1).get("name")))));
@@ -109,7 +163,7 @@ public class JmmSymbolTableBuilder {
     private static List<String> buildMethods(JmmNode classDecl) {
 
         return classDecl.getChildren(METHOD_DECL).stream()
-                .map(method -> method.get("name"))
+                .map(method -> method.get("methodName"))
                 .toList();
     }
 
@@ -117,7 +171,7 @@ public class JmmSymbolTableBuilder {
     private static List<Symbol> getLocalsList(JmmNode methodDecl) {
         // TODO: Simple implementation that needs to be expanded
 
-        var intType = new Type(TypeUtils.getIntTypeName(), false);
+        var intType = new Type(getIntTypeName(), false);
 
         return methodDecl.getChildren(VAR_DECL).stream()
                 .map(varDecl -> new Symbol(intType, varDecl.get("name")))
