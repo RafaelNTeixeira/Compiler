@@ -125,7 +125,7 @@ public class JmmSymbolTableBuilder {
                             isArray = false;
                             break;
                         default:
-                            type = new Type(fieldName, isArray);
+                            type = new Type(valueField.get("value"), isArray);
                             symbol = new Symbol(type, fieldName);
                             isArray = false;
                     }
@@ -143,17 +143,25 @@ public class JmmSymbolTableBuilder {
 
         for (JmmNode methodNode : methodDeclarations) {
             for (JmmNode node : methodNode.getChildren()) {
+                if (node.getParent().get("methodName").equals("main")) {
+                    isArray = true;
+                    JmmNode mainNode = node.getChildren().get(0);
+                    var value = mainNode.getChildren().get(0).get("value");
+                    type = new Type(getTypeName(value), isArray);
+                    returnTypes.put(methodNode.get("methodName"), type);
+                    isArray = false;
+                    break;
+                }
                 if (node.getKind().equals("Array")) {
                     isArray = true;
                     var value = node.getChildren().get(0).get("value");
                     type = new Type(getTypeName(value), isArray);
-                    returnTypes.put(node.getKind(), type);
+                    returnTypes.put(methodNode.get("methodName"), type);
                     isArray = false;
-
                 }
                 if (node.hasAttribute("value")) {
                     type = new Type(getTypeName(node.get("value")), isArray);
-                    returnTypes.put(node.getKind(), type);
+                    returnTypes.put(methodNode.get("methodName"), type);
                 }
             }
         }
@@ -172,14 +180,15 @@ public class JmmSymbolTableBuilder {
             List<Symbol> symbols = new ArrayList<Symbol>();
             Symbol symbol = null;
             for (JmmNode node : methodNode.getChildren("Param")) {
-                if (node.hasAttribute("methodName")) {
-                    if (node.get("methodName").equals("main")) {
-                        isArray = true;
-                        JmmNode mainNode = node.getChildren().get(0);
-                        var value = mainNode.getChildren().get(0).get("value");
-                        type = new Type(getTypeName(value), isArray);
-                        symbol = new Symbol(type, mainNode.getParent().get("name"));
-                    }
+                if (node.getParent().get("methodName").equals("main")) {
+                    isArray = true;
+                    JmmNode mainNode = node.getChildren().get(0);
+                    var value = mainNode.getChildren().get(0).get("value");
+                    type = new Type(getTypeName(value), isArray);
+                    symbol = new Symbol(type, mainNode.getParent().get("name"));
+                    symbols.add(symbol);
+                    isArray = false;
+                    break;
                 }
                 if (node.getKind().equals("Array")) {
                     isArray = true;
