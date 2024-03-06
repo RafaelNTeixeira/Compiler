@@ -107,7 +107,7 @@ param
 stmt
     : expr SEMI #Expression //
     | LCURLY stmt* RCURLY #Brackets //
-    | IF LPAREN expr RPAREN stmt (ELSEIF LPAREN expr RPAREN stmt)* (ELSE stmt)? #IfCondition //
+    | IF LPAREN expr RPAREN stmt (ELSEIF LPAREN expr RPAREN stmt)* (ELSE stmt*)? #IfCondition //
     | WHILE LPAREN expr RPAREN stmt #WhileLoop //
     | expr EQUALS expr SEMI #AssignStmt //
     | RETURN expr SEMI #ReturnStmt //
