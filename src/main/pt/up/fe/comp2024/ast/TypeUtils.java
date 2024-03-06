@@ -31,7 +31,7 @@ public class TypeUtils {
             case "id":
                 return ID_TYPE_NAME;
             default:
-                throw new IllegalArgumentException("Such type doesn't exist: " + type);
+                return type;
         }
     }
     public static String getIntTypeName() {

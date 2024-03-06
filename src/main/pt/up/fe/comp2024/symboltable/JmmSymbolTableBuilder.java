@@ -31,8 +31,8 @@ public class JmmSymbolTableBuilder {
         List <Symbol> fieldNames = buildFields(fieldDeclarations);
 
         var methods = buildMethods(classDecl);
-        var returnTypes = buildReturnTypes(classDecl);
-        var params = buildParams(classDecl);
+        var returnTypes = buildReturnTypes(methodDeclarations);
+        var params = buildParams(methodDeclarations);
         var locals = buildLocals(classDecl);
 
         return new JmmSymbolTable(className, superClassName, fieldNames, methods, returnTypes, params, locals, importNames);
@@ -77,45 +77,57 @@ public class JmmSymbolTableBuilder {
 
     private static List <Symbol> buildFields(List<JmmNode> fieldDeclarations) {
         List<Symbol> fields = new ArrayList<>();
+        Boolean isArray = false;
         Symbol symbol = null;
         Type type = null;
         String fieldName = "";
         for (JmmNode fieldNode : fieldDeclarations) {
             if (fieldNode.getParent().getKind().equals("ClassDecl")) {
                 for (JmmNode valueField : fieldNode.getChildren()) {
-                    fieldName = valueField.get("value");
+                    if (valueField.toString().equals("Array")) {
+                        isArray = true;
+                    }
+                    fieldName = valueField.getParent().get("name");
                     switch (valueField.getKind()) {
                         case "Boolean":
-                            type = new Type("boolean", false);
+                            type = new Type("boolean", isArray);
                             symbol = new Symbol(type, fieldName);
+                            isArray = false;
                             break;
                         case "Integer":
-                            type = new Type("int", false);
+                            type = new Type("int", isArray);
                             symbol = new Symbol(type, fieldName);
+                            isArray = false;
                             break;
                         case "Float":
-                            type = new Type("float", false);
+                            type = new Type("float", isArray);
                             symbol = new Symbol(type, fieldName);
+                            isArray = false;
                             break;
                         case "Double":
-                            type = new Type("double", false);
+                            type = new Type("double", isArray);
                             symbol = new Symbol(type, fieldName);
+                            isArray = false;
                             break;
                         case "String":
-                            type = new Type("String", false);
+                            type = new Type("String", isArray);
                             symbol = new Symbol(type, fieldName);
+                            isArray = false;
                             break;
                         case "Void":
-                            type = new Type("void", false);
+                            type = new Type("void", isArray);
                             symbol = new Symbol(type, fieldName);
+                            isArray = false;
                             break;
                         case "Id":
-                            type = new Type("id", false);
+                            type = new Type("id", isArray);
                             symbol = new Symbol(type, fieldName);
+                            isArray = false;
                             break;
                         default:
-                            type = new Type(fieldName, false);
+                            type = new Type(fieldName, isArray);
                             symbol = new Symbol(type, fieldName);
+                            isArray = false;
                     }
                     fields.add(symbol);
                 }
@@ -124,28 +136,58 @@ public class JmmSymbolTableBuilder {
         return fields;
     }
 
-    private static Map<String, Type> buildReturnTypes(JmmNode classDecl) {
-        // TODO: Simple implementation that needs to be expanded
+    private static Map<String, Type> buildReturnTypes(List<JmmNode> methodDeclarations) {
+        Map<String, Type> returnTypes = new HashMap<>();
+        Type type = null;
+        Boolean isArray = false;
 
-        Map<String, Type> map = new HashMap<>();
+        for (JmmNode methodNode : methodDeclarations) {
+            for (JmmNode node : methodNode.getChildren()) {
+                if (node.getKind().equals("Array")) {
+                    isArray = true;
+                    var value = node.getChildren().get(0).get("value");
+                    type = new Type(getTypeName(value), isArray);
+                    returnTypes.put(node.getKind(), type);
+                    isArray = false;
 
-        classDecl.getChildren(METHOD_DECL).stream()
-                .forEach(method -> map.put(method.get("name"), new Type(getIntTypeName(), false)));
+                }
+                if (node.hasAttribute("value")) {
+                    type = new Type(getTypeName(node.get("value")), isArray);
+                    returnTypes.put(node.getKind(), type);
+                }
+            }
+        }
 
-        return map;
+        return returnTypes;
     }
 
-    private static Map<String, List<Symbol>> buildParams(JmmNode classDecl) {
-        // TODO: Simple implementation that needs to be expanded
+    private static Map<String, List<Symbol>> buildParams(List<JmmNode> methodDeclarations) {
+        Map<String, List<Symbol>> paramNames = new HashMap<>();
+        List<Symbol> symbols = new ArrayList<Symbol>();
+        Symbol symbol = null;
+        Type type = null;
+        Boolean isArray = false;
 
-        Map<String, List<Symbol>> map = new HashMap<>();
+        for (JmmNode methodNode : methodDeclarations) {
+            for (JmmNode node : methodNode.getChildren("Param")) {
+                if (node.getKind().equals("Array")) {
+                    isArray = true;
+                    var value = node.getChildren().get(0).get("value");
+                    type = new Type(getTypeName(value), isArray);
+                    symbol = new Symbol(type, node.getChildren("name").get(0).toString());
+                }
+                if (node.hasAttribute("name")) {
+                    var value = node.getChildren().get(0).get("value");
+                    type = new Type(getTypeName(value), isArray);
+                    symbol = new Symbol(type, node.get("name"));
+                }
+                isArray = false;
+                symbols.add(symbol);
+            }
+            paramNames.put(methodNode.get("methodName"), symbols);
+        }
 
-        var intType = new Type(getIntTypeName(), false); // do tipo 'int'
-
-        classDecl.getChildren(METHOD_DECL).stream()
-                .forEach(method -> map.put(method.get("name"), Arrays.asList(new Symbol(intType, method.getJmmChild(1).get("name")))));
-
-        return map;
+        return paramNames;
     }
 
     private static Map<String, List<Symbol>> buildLocals(JmmNode classDecl) {
@@ -161,7 +203,6 @@ public class JmmSymbolTableBuilder {
     }
 
     private static List<String> buildMethods(JmmNode classDecl) {
-
         return classDecl.getChildren(METHOD_DECL).stream()
                 .map(method -> method.get("methodName"))
                 .toList();
