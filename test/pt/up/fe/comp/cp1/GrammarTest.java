@@ -52,7 +52,7 @@ public class GrammarTest {
 
     @Test
     public void testMainMethodEmpty() {
-        TestUtils.parseVerbose("static void main(String[] args) {}", MAIN_METHOD);
+        TestUtils.parseVerbose("static void main(String[] args) {}", INSTANCE_METHOD);
     }
 
     @Test
