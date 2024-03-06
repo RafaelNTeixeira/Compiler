@@ -95,12 +95,13 @@ methodDecl locals[boolean isPublic=false]
         type methodName=ID
         LPAREN param? (COMMA param)* RPAREN // pode aceitar funcao
         LCURLY varDecl* stmt* RCURLY
-    | (PUBLIC)? STATIC VOID methodName=MAIN LPAREN STRING LSQUARE RSQUARE ID RPAREN
+    | (PUBLIC)? STATIC VOID methodName=MAIN LPAREN param RPAREN
               LCURLY varDecl* stmt* RCURLY
     ;
 
 param
     : type name=ID
+    | value=STRING LSQUARE RSQUARE name=ID
     ;
 
 stmt

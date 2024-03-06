@@ -163,13 +163,24 @@ public class JmmSymbolTableBuilder {
 
     private static Map<String, List<Symbol>> buildParams(List<JmmNode> methodDeclarations) {
         Map<String, List<Symbol>> paramNames = new HashMap<>();
-        List<Symbol> symbols = new ArrayList<Symbol>();
-        Symbol symbol = null;
+
+
         Type type = null;
         Boolean isArray = false;
 
         for (JmmNode methodNode : methodDeclarations) {
+            List<Symbol> symbols = new ArrayList<Symbol>();
+            Symbol symbol = null;
             for (JmmNode node : methodNode.getChildren("Param")) {
+                if (node.hasAttribute("methodName")) {
+                    if (node.get("methodName").equals("main")) {
+                        isArray = true;
+                        JmmNode mainNode = node.getChildren().get(0);
+                        var value = mainNode.getChildren().get(0).get("value");
+                        type = new Type(getTypeName(value), isArray);
+                        symbol = new Symbol(type, mainNode.getParent().get("name"));
+                    }
+                }
                 if (node.getKind().equals("Array")) {
                     isArray = true;
                     var value = node.getChildren().get(0).get("value");
@@ -185,7 +196,7 @@ public class JmmSymbolTableBuilder {
                 symbols.add(symbol);
             }
             paramNames.put(methodNode.get("methodName"), symbols);
-            symbols.clear();
+
         }
 
         return paramNames;
