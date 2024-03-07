@@ -38,7 +38,6 @@ FLOAT : 'float' ;
 DOUBLE : 'double' ;
 VOID : 'void' ;
 STATIC : 'static' ;
-MAIN : 'main' ;
 PUBLIC : 'public' ;
 RETURN : 'return' ;
 IMPORT : 'import' ;
@@ -95,7 +94,7 @@ methodDecl locals[boolean isPublic=false]
         type methodName=ID
         LPAREN param? (COMMA param)* RPAREN // pode aceitar funcao
         LCURLY varDecl* stmt* RCURLY
-    | (PUBLIC)? STATIC VOID methodName=MAIN LPAREN param RPAREN
+    | (PUBLIC)? STATIC VOID methodName=ID LPAREN param RPAREN
               LCURLY varDecl* stmt* RCURLY
     ;
 
