@@ -92,7 +92,7 @@ type
 methodDecl locals[boolean isPublic=false]
     : (PUBLIC {$isPublic=true;})?
         type methodName=ID
-        LPAREN param? (COMMA param)* RPAREN // pode aceitar funcao
+        LPAREN (param (COMMA param)*)? RPAREN // pode aceitar funcao
         LCURLY varDecl* stmt* RCURLY
     | (PUBLIC)? STATIC VOID methodName=ID LPAREN param RPAREN
               LCURLY varDecl* stmt* RCURLY
