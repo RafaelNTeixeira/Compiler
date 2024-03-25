@@ -20,6 +20,7 @@ public class JmmSymbolTableBuilder {
         var importDecl = root.getChildren("ImportStatment"); // Nodes relacionados com declarações de imports
         var classDeclarations = root.getChildren("ClassDecl"); // Nodes relacionados com declarações de classes
         var fieldDeclarations = root.getDescendants("VarDecl"); // Retira tudo o que exista de VarDecl
+        var test = root.getChildren("ClassDecl");
         var methodDeclarations = root.getDescendants("MethodDecl"); // Retira tudo o que exista de declarações de métodos (funções)
 
         List <String> importNames = buildImports(importDecl);

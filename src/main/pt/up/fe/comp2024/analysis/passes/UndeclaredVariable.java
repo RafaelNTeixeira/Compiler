@@ -9,6 +9,9 @@ import pt.up.fe.comp2024.ast.Kind;
 import pt.up.fe.comp2024.ast.NodeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Checks if the type of the expression in a return statement is compatible with the method return type.
  *
@@ -17,11 +20,44 @@ import pt.up.fe.specs.util.SpecsCheck;
 public class UndeclaredVariable extends AnalysisVisitor {
 
     private String currentMethod;
+    private List<String> returnTypes = new ArrayList<>();
 
     @Override
     public void buildVisitor() {
         addVisit(Kind.METHOD_DECL, this::visitMethodDecl);
         addVisit(Kind.VAR_REF_EXPR, this::visitVarRefExpr);
+        addVisit(Kind.RETURN_STMT, this::visitRetStatement);
+    }
+
+    private Void visitRetStatement(JmmNode returnStatm, SymbolTable symbolTable) {
+        List<JmmNode> returnElements = returnStatm.getDescendants();
+        for (JmmNode returnElement : returnElements) {
+            if (returnElement.hasAttribute("name")) {
+                returnTypes.add(returnElement.get("name"));
+            }
+        }
+
+        Boolean valid = true;
+
+        for (int i = 0; i < returnTypes.size()-1; i++) {
+            if (returnTypes.get(i) != returnTypes.get(i + 1)) {
+                valid = false;
+            }
+        }
+
+        if (!valid) {
+            // Create error report
+            var message = String.format("Incompatible return types: '%s'", returnTypes);
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(returnStatm),
+                    NodeUtils.getColumn(returnStatm),
+                    message,
+                    null)
+            );
+        }
+
+        return null;
     }
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
