@@ -10,6 +10,7 @@ import pt.up.fe.comp2024.ast.NodeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -20,7 +21,7 @@ import java.util.List;
 public class UndeclaredVariable extends AnalysisVisitor {
 
     private String currentMethod;
-    private List<String> returnTypes = new ArrayList<>();
+    List<List<String>> returnTypes = new ArrayList<>();
 
     private List<String> imports = new ArrayList<>();
 
@@ -28,7 +29,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
     public void buildVisitor() {
         addVisit(Kind.IMPORT_STATMENT, this::visitImportStatement);
         addVisit(Kind.METHOD_DECL, this::visitMethodDecl);
-        addVisit(Kind.VAR_REF_EXPR, this::visitVarRefExpr);
+        addVisit(Kind.VAR_REF_EXPR, this::visitVarDecl);
         addVisit(Kind.RETURN_STMT, this::visitRetStatement);
         addVisit(Kind.ASSIGN_STMT, this::visitAssignStatement);
     }
@@ -39,7 +40,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
         Boolean valid = true;
 
         // a = new A() -> aceita
-        var assignVarType = assignElements.get(0).getParent().getParent().getChildren().get(0).toString();
         if ((assignElements.get(0).getKind().equals("VarRefExpr")) && (assignElements.get(1).getKind().equals("NewClass"))) valid = true;
         else if (assignElements.get(1).getKind().equals("ArrayInit")) {
             var isFirstVarArrayType = !assignElements.get(0).getParent().getParent().getChildren("Array").isEmpty();
@@ -55,6 +55,8 @@ public class UndeclaredVariable extends AnalysisVisitor {
             }
         }
         else if (!assignElements.get(0).getKind().equals(assignElements.get(1).getKind())) valid = false;
+        // if var is Kind VarRefExpr need to get type of var
+
 
         if (!valid) {
             // Create error report
@@ -81,17 +83,114 @@ public class UndeclaredVariable extends AnalysisVisitor {
     }
 
     private Void visitRetStatement(JmmNode returnStatm, SymbolTable symbolTable) {
+
+        // return kind and name of elements that are being assigned
         List<JmmNode> returnElements = returnStatm.getDescendants();
         for (JmmNode returnElement : returnElements) {
             if (returnElement.hasAttribute("name")) {
-                returnTypes.add(returnElement.get("name"));
+                List<String> elementInfo = Arrays.asList(returnElement.getKind(), returnElement.get("name"));
+
+                returnTypes.add(elementInfo);
+            } else if (returnElement.hasAttribute("methodName")) {
+                List<String> elementInfo = Arrays.asList(returnElement.getKind(), returnElement.get("methodName"));
+                returnTypes.add(elementInfo);
             }
         }
 
         Boolean valid = true;
 
+        // Check if returnTypes are the same
         for (int i = 0; i < returnTypes.size()-1; i++) {
-            if (returnTypes.get(i) != returnTypes.get(i + 1)) {
+            // in case of a function, check if params are the same
+            if (returnTypes.get(0).get(0).equals("FunctionCall")) {
+                if (!returnTypes.get(i+1).get(0).equals(returnTypes.get(i+2).get(0))) {
+                    valid = false;
+                }
+                i++;
+            }
+            else {
+                if (!returnTypes.get(i).get(0).equals(returnTypes.get(i + 1).get(0))) {
+                    valid = false;
+                }
+            }
+        }
+
+
+        // Check if functionCall is calling var valid type
+        if (returnElements.get(0).getKind().equals("FunctionCall")) {
+            var importNames = symbolTable.getImports();
+            var localVariablesCurrentMethod = symbolTable.getLocalVariables(currentMethod);
+            var varThatCallsFunction = returnElements.get(1).get("name");
+            String varThatCallsFunctionType = "";
+
+            // Checks if in (Ex:) a.foo(), a is a local variable from the current method
+            boolean isCalledVariableALocalVariable = false;
+            for (var localVariable : localVariablesCurrentMethod) {
+                for (var returnElement : returnElements) {
+                    if (returnElement.hasAttribute("name")) {
+                        if (localVariable.getName().equals(varThatCallsFunction)) {
+                            isCalledVariableALocalVariable = true;
+                            varThatCallsFunctionType = localVariable.getType().getName();
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Checks if in (Ex:) a.foo(), a comes from an import
+            boolean isCalledVariableFromImport = false;
+
+            if (isCalledVariableALocalVariable) {
+                for (var importName : importNames) {
+                    if (importName.equals(varThatCallsFunctionType)) {
+                        isCalledVariableFromImport = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!isCalledVariableFromImport) {
+
+                var methodCalled = returnElements.get(0).get("methodName");
+                var varTypeSupposedToBeReceived = symbolTable.getParameters(methodCalled).get(0).getType().getName();
+
+                var functionCallChildren = returnElements.get(0).getChildren();
+                var varNameAddedToReturnMethod = functionCallChildren.get(functionCallChildren.size() - 1).get("name");
+                String varTypeAddedToReturnMethod = "";
+                var localVariables = symbolTable.getLocalVariables(currentMethod);
+
+                // extrair tipo da variável a ser chamada na função de retorno
+                for (var localVariable : localVariables) {
+                    if (localVariable.getName().equals(varNameAddedToReturnMethod)) {
+                        varTypeAddedToReturnMethod = localVariable.getType().getName();
+                    }
+                }
+
+                String finalVarTypeAddedToReturnMethod = varTypeAddedToReturnMethod;
+
+                if (symbolTable.getParameters(methodCalled).stream()
+                        .noneMatch(param -> param.getType().getName().equals(finalVarTypeAddedToReturnMethod))) {
+                    valid = false;
+                }
+            }
+        }
+
+        // Check if var in return exists
+        else {
+            for (var returnElement : returnTypes) {
+                if (symbolTable.getParameters(currentMethod).stream()
+                        .anyMatch(param -> param.getName().equals(returnElement.get(1)))) {
+                    returnTypes.clear();
+                    return null;
+                } else if (symbolTable.getLocalVariables(currentMethod).stream()
+                        .anyMatch(local -> local.getName().equals(returnElement.get(1)))) {
+                    returnTypes.clear();
+                    return null;
+                } else if (symbolTable.getImports().stream()
+                        .anyMatch(imp -> imp.equals(returnElement.get(1)))) {
+                    returnTypes.clear();
+                    return null;
+                }
                 valid = false;
             }
         }
@@ -144,11 +243,11 @@ public class UndeclaredVariable extends AnalysisVisitor {
         return null;
     }
 
-    private Void visitVarRefExpr(JmmNode varRefExpr, SymbolTable table) {
+    private Void visitVarDecl(JmmNode varDecl, SymbolTable table) {
         SpecsCheck.checkNotNull(currentMethod, () -> "Expected current method to be set");
 
         // Check if exists a parameter or variable declaration with the same name as the variable reference
-        var varRefName = varRefExpr.get("name");
+        var varRefName = varDecl.get("name");
 
         // Var is a field, return
         if (table.getFields().stream()
@@ -164,14 +263,14 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         // Var is a declared variable or imported package, return
         if (table.getLocalVariables(currentMethod).stream()
-                .anyMatch(varDecl -> varDecl.getName().equals(varRefName)) ||
+                .anyMatch(varDec -> varDec.getName().equals(varRefName)) ||
                 table.getImports().stream().anyMatch(imp -> imp.equals(varRefName))
                 ) {
             return null;
         }
 
         if (table.getImports().stream()
-                .anyMatch(varDecl -> varDecl.equals(varRefName))) {
+                .anyMatch(varDec -> varDec.equals(varRefName))) {
             return null;
         }
 
@@ -179,8 +278,8 @@ public class UndeclaredVariable extends AnalysisVisitor {
         var message = String.format("Variable '%s' does not exist.", varRefName);
         addReport(Report.newError(
                 Stage.SEMANTIC,
-                NodeUtils.getLine(varRefExpr),
-                NodeUtils.getColumn(varRefExpr),
+                NodeUtils.getLine(varDecl),
+                NodeUtils.getColumn(varDecl),
                 message,
                 null)
         );

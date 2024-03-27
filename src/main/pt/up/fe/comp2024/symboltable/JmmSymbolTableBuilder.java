@@ -46,7 +46,7 @@ public class JmmSymbolTableBuilder {
                 SpecsCheck.checkArgument(IMPORT_STATMENT.check(importNode), () -> "Expected an import declaration: " + importNode);
                 for (String attribute : importNode.getAttributes()) { // percorre todos os atributos de um node
                     if (attribute.equals("importName")) { // encontra o atributo importName definido na gramática
-                        importNames.add(attribute); // guarda-o
+                        importNames.add(importNode.get("ID")); // guarda-o
                     }
                 }
             }
