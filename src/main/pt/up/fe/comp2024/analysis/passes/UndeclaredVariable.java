@@ -29,7 +29,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
     public void buildVisitor() {
         addVisit(Kind.IMPORT_STATMENT, this::visitImportStatement);
         addVisit(Kind.METHOD_DECL, this::visitMethodDecl);
-        addVisit(Kind.VAR_REF_EXPR, this::visitVarDecl);
+        addVisit(Kind.VAR_DECL, this::visitVarDecl);
         addVisit(Kind.RETURN_STMT, this::visitRetStatement);
         addVisit(Kind.ASSIGN_STMT, this::visitAssignStatement);
     }
@@ -39,11 +39,36 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         Boolean valid = true;
 
+        var arrayInits = new ArrayList<JmmNode>();
+        for (var alignElement : assignElements) {
+            if (alignElement.getKind().equals("ArrayInit")) {
+                arrayInits.add(alignElement);
+            }
+        }
+        for (int i = 0; i < arrayInits.size(); i++) {
+            if (arrayInits.get(i).getChildren().size() > 1) {
+                var firstElement = arrayInits.get(i);
+                var secondElement = arrayInits.get(i + 1);
+
+                if (!firstElement.getKind().equals(secondElement.getKind())) valid = false;
+            }
+        }
         // a = new A() -> aceita
         if ((assignElements.get(0).getKind().equals("VarRefExpr")) && (assignElements.get(1).getKind().equals("NewClass"))) valid = true;
+        /*
         else if (assignElements.get(1).getKind().equals("ArrayInit")) {
             var isFirstVarArrayType = !assignElements.get(0).getParent().getParent().getChildren("Array").isEmpty();
             if (isFirstVarArrayType) {
+                var arrayInits = new ArrayList<>();
+                for (var assignElement : assignElements) {
+                    if (assignElement.getKind().equals("ArrayInit")) {
+                        arrayInits.add(assignElement);
+                    }
+                }
+                var sameArrayTypes = true;
+                for (var arrayInit : arrayInits) {
+
+                }
                 var arrayValuesTypeFirstVar = assignElements.get(0).getParent().getParent().getChildren("Array").get(0).getChildren().get(0);
                 var arrayValuesTypeSecnVar = assignElements.get(1).getChildren().get(0);
                 String compareValues = "";
@@ -54,6 +79,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
                 valid = false;
             }
         }
+        */
         else if (!assignElements.get(0).getKind().equals(assignElements.get(1).getKind())) valid = false;
         // if var is Kind VarRefExpr need to get type of var
 
