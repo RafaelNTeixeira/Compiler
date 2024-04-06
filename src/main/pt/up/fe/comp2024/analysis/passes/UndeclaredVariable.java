@@ -36,6 +36,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
     private Void visitAssignStatement(JmmNode assignStatm, SymbolTable symbolTable) {
         List<JmmNode> assignElements = assignStatm.getChildren();
+        var localsVar = symbolTable.getLocalVariables(currentMethod);
 
         Boolean valid = true;
 
@@ -47,41 +48,56 @@ public class UndeclaredVariable extends AnalysisVisitor {
         }
         for (int i = 0; i < arrayInits.size(); i++) {
             if (arrayInits.get(i).getChildren().size() > 1) {
-                var firstElement = arrayInits.get(i);
-                var secondElement = arrayInits.get(i + 1);
+                var firstElement = arrayInits.get(i).getChildren().get(i);
+                var secondElement = arrayInits.get(i).getChildren().get(i + 1);
 
                 if (!firstElement.getKind().equals(secondElement.getKind())) valid = false;
             }
         }
-        // a = new A() -> aceita
-        if ((assignElements.get(0).getKind().equals("VarRefExpr")) && (assignElements.get(1).getKind().equals("NewClass"))) valid = true;
-        /*
-        else if (assignElements.get(1).getKind().equals("ArrayInit")) {
-            var isFirstVarArrayType = !assignElements.get(0).getParent().getParent().getChildren("Array").isEmpty();
-            if (isFirstVarArrayType) {
-                var arrayInits = new ArrayList<>();
-                for (var assignElement : assignElements) {
-                    if (assignElement.getKind().equals("ArrayInit")) {
-                        arrayInits.add(assignElement);
-                    }
-                }
-                var sameArrayTypes = true;
-                for (var arrayInit : arrayInits) {
 
+        // Lidar com arrays
+        for (var localVar : localsVar) {
+            // assignElement.get(0) é sempre igual à variável na qual guardamos valores
+            if (localVar.getName().equals(assignElements.get(0).get("name"))) {
+                // Se for do tipo array só pode dar assign a elementos do tipo array
+                if (localVar.getType().isArray()) {
+                    if (!assignElements.get(1).getKind().equals("ArrayInit")) valid = false;
                 }
-                var arrayValuesTypeFirstVar = assignElements.get(0).getParent().getParent().getChildren("Array").get(0).getChildren().get(0);
-                var arrayValuesTypeSecnVar = assignElements.get(1).getChildren().get(0);
-                String compareValues = "";
-                if (arrayValuesTypeSecnVar.getKind().equals("IntegerLiteral")) compareValues = "Integer";
-                if (!arrayValuesTypeFirstVar.getKind().equals(compareValues)) valid = false;
-            }
-            else {
-                valid = false;
+                // Se não for do tipo array, não pode dar assign a elementos do tipo array
+                else {
+                    if (assignElements.get(1).getKind().equals("ArrayInit")) valid = false;
+                }
             }
         }
-        */
-        else if (!assignElements.get(0).getKind().equals(assignElements.get(1).getKind())) valid = false;
-        // if var is Kind VarRefExpr need to get type of var
+
+
+        // assign do tipo a = new A()
+        var importNames = symbolTable.getImports();
+        var foundImportName = true;
+        if (assignElements.get(1).getKind().equals("NewClass")) {
+            // se conter nome de qualquer import, assume-se como aceite. Ex: A a; B b; a = new B();
+            for (var importName : importNames) {
+                if (importName.equals(assignElements.get(1).get("className"))) {
+                    break;
+                }
+                if (!foundImportName) {
+                    valid = false;
+                }
+            }
+        }
+        // Para variáveis que dão assign a inteiros
+        else if (assignElements.get(1).getKind().equals("IntegerLiteral")) {
+            for (var localVar : localsVar) {
+                if (localVar.getName().equals(assignElements.get(0).get("name"))) {
+                    var expectedValueType = localVar.getType().getName();
+                    if (!expectedValueType.equals("int")) {
+                        valid = false;
+                    }
+
+                }
+            }
+            //valid = false;
+        }
 
 
         if (!valid) {
@@ -109,13 +125,13 @@ public class UndeclaredVariable extends AnalysisVisitor {
     }
 
     private Void visitRetStatement(JmmNode returnStatm, SymbolTable symbolTable) {
-
         // return kind and name of elements that are being assigned
         List<JmmNode> returnElements = returnStatm.getDescendants();
+        var localsVar = symbolTable.getLocalVariables(currentMethod);
+
         for (JmmNode returnElement : returnElements) {
             if (returnElement.hasAttribute("name")) {
                 List<String> elementInfo = Arrays.asList(returnElement.getKind(), returnElement.get("name"));
-
                 returnTypes.add(elementInfo);
             } else if (returnElement.hasAttribute("methodName")) {
                 List<String> elementInfo = Arrays.asList(returnElement.getKind(), returnElement.get("methodName"));
@@ -140,7 +156,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
                 }
             }
         }
-
 
         // Check if functionCall is calling var valid type
         if (returnElements.get(0).getKind().equals("FunctionCall")) {
@@ -200,7 +215,22 @@ public class UndeclaredVariable extends AnalysisVisitor {
                 }
             }
         }
-
+        // se o return for de uma conta aritmética
+        else if (returnElements.get(0).getKind().equals("BinaryExpr")) {
+            for (var returnElement : returnElements) {
+                // só é preciso analisar variáveis int. Ignora os operadores.
+                if (!returnElement.getKind().equals("BinaryExpr")) {
+                    // caso a variável no return esteja nas variáveis locais
+                    for (var localVar : localsVar) {
+                        // verifica se é variável local da função
+                        if (localVar.getName().equals(returnElement.get("name"))) {
+                            // se o valor for diferente de int é inválido
+                            if (!localVar.getType().getName().equals("int")) valid = false;
+                        }
+                    }
+                }
+            }
+        }
         // Check if var in return exists
         else {
             for (var returnElement : returnTypes) {
