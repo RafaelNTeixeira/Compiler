@@ -272,16 +272,33 @@ public class UndeclaredVariable extends AnalysisVisitor {
         List<JmmNode> ifConditions = method.getChildren("IfCondition");
         boolean valid = true;
         JmmNode invalidIf = method;
-
-       if (!ifConditions.isEmpty()) {
-           var ewqeqw = "";
-       }
+        var methods = table.getMethods();
 
        for (JmmNode ifCondition : ifConditions) {
-           var operatorUsed = ifCondition.getChildren("BinaryExpr").get(0).get("op");
-           if (operatorUsed.equals("+") || operatorUsed.equals("-") || operatorUsed.equals("*") || operatorUsed.equals("/")) {
+           var operatorUsed = ifCondition.getChildren().get(0).getKind();
+           // se conter BinaryExpr (conta aritmética sem operadores de comparação), é suposto dar erro
+           if (operatorUsed.equals("BinaryExpr")) {
                invalidIf = ifCondition;
                valid = false;
+           }
+       }
+
+       // O Kind "Expression" pode conter o Kind "FunctionCall"
+       var expressions = method.getChildren("Expression");
+       for (var expression : expressions) {
+           var functionCalls = expression.getChildren("FunctionCall");
+           // se existir chamadas a funções
+           if (!functionCalls.isEmpty()) {
+               for (var functionCall : functionCalls) {
+                   // verificar se o método chamado existe
+                   for (var methodName : methods) {
+                       if (methodName.equals(functionCall.get("methodName"))) {
+                           valid = true;
+                           break;
+                       }
+                       valid = false;
+                   }
+               }
            }
        }
 
