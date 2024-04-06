@@ -127,7 +127,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
     private Void visitRetStatement(JmmNode returnStatm, SymbolTable symbolTable) {
         // return kind and name of elements that are being assigned
         List<JmmNode> returnElements = returnStatm.getDescendants();
-        var localsVar = symbolTable.getLocalVariables(currentMethod);
+        var localVariables = symbolTable.getLocalVariables(currentMethod);
 
         for (JmmNode returnElement : returnElements) {
             if (returnElement.hasAttribute("name")) {
@@ -180,7 +180,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
             // Checks if in (Ex:) a.foo(), a comes from an import
             boolean isCalledVariableFromImport = false;
-
             if (isCalledVariableALocalVariable) {
                 for (var importName : importNames) {
                     if (importName.equals(varThatCallsFunctionType)) {
@@ -189,16 +188,12 @@ public class UndeclaredVariable extends AnalysisVisitor {
                     }
                 }
             }
-
             if (!isCalledVariableFromImport) {
-
                 var methodCalled = returnElements.get(0).get("methodName");
-                var varTypeSupposedToBeReceived = symbolTable.getParameters(methodCalled).get(0).getType().getName();
 
                 var functionCallChildren = returnElements.get(0).getChildren();
                 var varNameAddedToReturnMethod = functionCallChildren.get(functionCallChildren.size() - 1).get("name");
                 String varTypeAddedToReturnMethod = "";
-                var localVariables = symbolTable.getLocalVariables(currentMethod);
 
                 // extrair tipo da variável a ser chamada na função de retorno
                 for (var localVariable : localVariables) {
@@ -221,11 +216,25 @@ public class UndeclaredVariable extends AnalysisVisitor {
                 // só é preciso analisar variáveis int. Ignora os operadores.
                 if (!returnElement.getKind().equals("BinaryExpr")) {
                     // caso a variável no return esteja nas variáveis locais
-                    for (var localVar : localsVar) {
+                    for (var localVar : localVariables) {
                         // verifica se é variável local da função
                         if (localVar.getName().equals(returnElement.get("name"))) {
                             // se o valor for diferente de int é inválido
                             if (!localVar.getType().getName().equals("int")) valid = false;
+                        }
+                    }
+                }
+            }
+        }
+        // se o return for um acesso a um array
+        else if (returnElements.get(0).getKind().equals("ArrayAccess")) {
+            for (var child : returnElements.get(0).getChildren()) {
+                // se encontrar a variável, queremos verificar se é do tipo array
+                if (child.getKind().equals("VarRefExpr")) {
+                    for (var localVar : localVariables) {
+                        // se não for array, dá erro
+                        if (!localVar.getType().isArray()) {
+                            valid = false;
                         }
                     }
                 }
