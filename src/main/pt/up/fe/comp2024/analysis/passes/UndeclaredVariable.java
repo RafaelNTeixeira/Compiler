@@ -102,7 +102,34 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
                 }
             }
-            //valid = false;
+        }
+        // assign a uma variável (Ex: varLeft = varRight)
+        else if (assignElements.get(1).getKind().equals("VarRefExpr")) {
+            // pesquisa-se pela variável que recebe o valor
+            for (var varLeft : localsVar) {
+                if (assignElements.get(0).get("name").equals(varLeft.getName())) {
+                    // pesquisa-se pela variável que dá o valor
+                    for (var varRight : localsVar) {
+                        if (assignElements.get(1).get("name").equals(varRight.getName())) {
+                            // se tiverem tipos diferentes
+                            if (!varLeft.getType().getName().equals(varRight.getType().getName())) {
+                                // se a variável da direita for um objeto da classe
+                                if (varRight.getType().getName().equals(symbolTable.getClassName())) {
+                                    // e se a variável da esquerda for um import
+                                    for (var importName : importNames) {
+                                        if (varLeft.getType().getName().equals(importName)) {
+                                            // se esse import não extender classe da variável da direita, dá erro
+                                            if (!varLeft.getType().getName().equals(symbolTable.getSuper())) {
+                                                valid = false;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
 
@@ -307,6 +334,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
            }
        }
 
+       // Verificar se o método chamado existe
        // O Kind "Expression" pode conter o Kind "FunctionCall"
        var expressions = method.getChildren("Expression");
        for (var expression : expressions) {
@@ -362,9 +390,8 @@ public class UndeclaredVariable extends AnalysisVisitor {
            }
        }
 
-
-
-       // percorremos as chamadas feitas a funções até agora
+       // Analisar se uma variável ao chamar uma função, esta recebe o tipo de retorno correto
+        // percorremos as chamadas feitas a funções até agora
        for (Pair<JmmNode, JmmNode> functionCalled : functionsCalled) {
             // se coincidir com o método a analisar atualmente, estudamos esse método
             if (functionCalled.a.get("methodName").equals(currentMethod)) {
@@ -379,13 +406,11 @@ public class UndeclaredVariable extends AnalysisVisitor {
                         // se existir pelo menos um parametro varargs
                         if (numVarArgsCalled > 0) {
                             boolean isLastParamVarArgs = !method.getChildren("Param").get(parametersNumber - 1).getChildren("VarArgs").isEmpty();
-
                             // só pode existir um parametro varargs nos parametros da função e tem que estar como último parâmetro dado, caso contrário dá erro
                             if (!isLastParamVarArgs || numVarArgsCalled > 1) {
                                 valid = false;
                                 break;
                             }
-
                             // procuramos pelo return statement para verificar o seu tipo
                             for (var child : methodChildren) {
                                 if (child.getKind().equals("ReturnStmt")) {
@@ -400,11 +425,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
                 }
             }
        }
-
-
-
-
-
 
        if (!valid) {
            var message = String.format("Invalid If Condition: '%s'", ifConditions);
