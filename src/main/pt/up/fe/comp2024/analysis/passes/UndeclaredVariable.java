@@ -1,5 +1,7 @@
 package pt.up.fe.comp2024.analysis.passes;
 
+import org.antlr.v4.runtime.misc.Pair;
+import pt.up.fe.comp.jmm.analysis.table.Symbol;
 import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.ast.JmmNode;
 import pt.up.fe.comp.jmm.report.Report;
@@ -25,6 +27,10 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
     private List<String> imports = new ArrayList<>();
 
+    private List<Pair<JmmNode, JmmNode>> functionsCalled = new ArrayList<>(); // Guarda o node da chamada feita a uma função e o node da declaração da variável que chama a função
+
+    private List<Pair<String, List<Symbol>>> allLocalVariables = new ArrayList<>(); // Guarda o nome da função e a lista das suas variáveis locais
+
     @Override
     public void buildVisitor() {
         addVisit(Kind.IMPORT_STATMENT, this::visitImportStatement);
@@ -46,6 +52,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
                 arrayInits.add(alignElement);
             }
         }
+        // verificar se os valores dentro do array são do mesmo tipo
         for (int i = 0; i < arrayInits.size(); i++) {
             if (arrayInits.get(i).getChildren().size() > 1) {
                 var firstElement = arrayInits.get(i).getChildren().get(i);
@@ -69,7 +76,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
                 }
             }
         }
-
 
         // assign do tipo a = new A()
         var importNames = symbolTable.getImports();
@@ -128,6 +134,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
         // return kind and name of elements that are being assigned
         List<JmmNode> returnElements = returnStatm.getDescendants();
         var localVariables = symbolTable.getLocalVariables(currentMethod);
+        var parameters = symbolTable.getParameters(currentMethod);
 
         for (JmmNode returnElement : returnElements) {
             if (returnElement.hasAttribute("name")) {
@@ -231,10 +238,12 @@ public class UndeclaredVariable extends AnalysisVisitor {
             for (var child : returnElements.get(0).getChildren()) {
                 // se encontrar a variável, queremos verificar se é do tipo array
                 if (child.getKind().equals("VarRefExpr")) {
-                    for (var localVar : localVariables) {
-                        // se não for array, dá erro
-                        if (!localVar.getType().isArray()) {
-                            valid = false;
+                    if (localVariables != null && !localVariables.isEmpty()) {
+                        for (var localVar : localVariables) {
+                            // se não for array, dá erro
+                            if (!localVar.getType().isArray()) {
+                                valid = false;
+                            }
                         }
                     }
                 }
@@ -282,6 +291,12 @@ public class UndeclaredVariable extends AnalysisVisitor {
         boolean valid = true;
         JmmNode invalidIf = method;
         var methods = table.getMethods();
+        var returnType = table.getReturnType(currentMethod);
+
+        List<Symbol> localsList = table.getLocalVariables(currentMethod);
+        Pair<String, List<Symbol>> pairLocals = new Pair<>(currentMethod, localsList);
+        allLocalVariables.add(pairLocals);
+
 
        for (JmmNode ifCondition : ifConditions) {
            var operatorUsed = ifCondition.getChildren().get(0).getKind();
@@ -310,6 +325,86 @@ public class UndeclaredVariable extends AnalysisVisitor {
                }
            }
        }
+
+       var methodChildren = method.getChildren();
+       var assignments = method.getChildren("AssignStmt");
+
+       // Ciclo para guardar FunctionCalls e o número de parametros dado a cada chamada de função
+       // Se existirem assignments
+       if (!assignments.isEmpty()) {
+           // percorremos os assigments
+           for (var assignment : assignments) {
+               // verificamos se existem chamadas a funções
+               if (!assignment.getChildren("FunctionCall").isEmpty()) {
+                   // Se existirem, percorremos todas as chamadas feitas a funções
+                   for (var functionCall : assignment.getChildren("FunctionCall")) {
+                       // percorremos as variáveis locais do método atual
+                       for (var variableCallingFunction : assignment.getParent().getChildren("VarDecl")) {
+                           var variableDecl = functionCall.getParent().getChildren("VarRefExpr").get(0).get("name");
+                           // se encontrarmos a variável que chama a função
+                           if (variableCallingFunction.get("name").equals(variableDecl)) {
+                               // confirmar se a variável contém um tipo de valor
+                               if (variableCallingFunction.getChildren().get(0).hasAttribute("value")) {
+                                   // guardamos a function call e o número de parametros recebidos pela função
+                                   Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
+                                   functionsCalled.add(pairFunc);
+                                   //var varCallingFunctionType = variableCallingFunction.getChildren().get(0).get("value");
+                               }
+                               // se variável for um array
+                               else if (!variableCallingFunction.getChildren("Array").isEmpty()) {
+                                   Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
+                                   functionsCalled.add(pairFunc);
+                               }
+                           }
+                       }
+                   }
+               }
+           }
+       }
+
+
+
+       // percorremos as chamadas feitas a funções até agora
+       for (Pair<JmmNode, JmmNode> functionCalled : functionsCalled) {
+            // se coincidir com o método a analisar atualmente, estudamos esse método
+            if (functionCalled.a.get("methodName").equals(currentMethod)) {
+                var numVarArgsCalled = 0;
+                for (var methodChild : methodChildren) {
+                    // varargs está dentro do Kind Param
+                    if (methodChild.getKind().equals("Param")) {
+                        int parametersNumber = method.getChildren("Param").size();
+
+                        if (!methodChild.getChildren("VarArgs").isEmpty()) numVarArgsCalled += 1;
+
+                        // se existir pelo menos um parametro varargs
+                        if (numVarArgsCalled > 0) {
+                            boolean isLastParamVarArgs = !method.getChildren("Param").get(parametersNumber - 1).getChildren("VarArgs").isEmpty();
+
+                            // só pode existir um parametro varargs nos parametros da função e tem que estar como último parâmetro dado, caso contrário dá erro
+                            if (!isLastParamVarArgs || numVarArgsCalled > 1) {
+                                valid = false;
+                                break;
+                            }
+
+                            // procuramos pelo return statement para verificar o seu tipo
+                            for (var child : methodChildren) {
+                                if (child.getKind().equals("ReturnStmt")) {
+                                    // variável que guarda o valor de return do método a analisar agora
+                                    var variableThatCalledFunctionType = functionCalled.b.getChildren().get(0).get("value");
+                                    // se os tipos de retorno forem diferentes, dá erro
+                                    if (!returnType.getName().equals(variableThatCalledFunctionType)) valid = false;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+       }
+
+
+
+
+
 
        if (!valid) {
            var message = String.format("Invalid If Condition: '%s'", ifConditions);
