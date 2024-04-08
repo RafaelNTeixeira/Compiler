@@ -68,7 +68,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
             if (localVar.getName().equals(assignElements.get(0).get("name"))) {
                 // Se for do tipo array só pode dar assign a elementos do tipo array
                 if (localVar.getType().isArray()) {
-                    if (!assignElements.get(1).getKind().equals("ArrayInit")) {
+                    if (!assignElements.get(1).getKind().equals("ArrayInit") && !assignElements.get(1).getKind().equals("NewArray")) {
                         valid = false;
                         break;
                     }
@@ -269,8 +269,8 @@ public class UndeclaredVariable extends AnalysisVisitor {
                     for (var localVar : localVariables) {
                         // verifica se é variável local da função
                         if (localVar.getName().equals(returnElement.get("name"))) {
-                            // se o valor for diferente de int é inválido
-                            if (!localVar.getType().getName().equals("int")) valid = false;
+                            // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
+                            if (!localVar.getType().getName().equals("int") || localVar.getType().isArray()) valid = false;
                         }
                     }
                 }
@@ -354,12 +354,26 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
        // Testar validade da condição de um loop while
         for (JmmNode whileCondition : whileConditions) {
-            var operatorUsed = whileCondition.getChildren().get(0).getKind();
+            var operatorUsed = whileCondition.getChildren().get(0);
+            var operatorUsedKind = operatorUsed.getKind();
             // se conter BinaryExpr (conta aritmética sem operadores de comparação), é suposto dar erro
-            if (operatorUsed.equals("BinaryExpr")) {
+            if (operatorUsedKind.equals("BinaryExpr")) {
                 invalidIf = whileCondition;
                 valid = false;
                 break;
+            }
+            // a condição é feita com uma variável
+            else if (operatorUsedKind.equals("VarRefExpr")) {
+                // procuramos pela variável utilizada para estudar o seu tipo
+                for (var localVar : table.getLocalVariables(currentMethod)) {
+                    if (localVar.getName().equals(operatorUsed.get("name"))) {
+                        // se não for do tipo booleano dá erro
+                        if (!localVar.getType().getName().equals("boolean")) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                }
             }
         }
 
