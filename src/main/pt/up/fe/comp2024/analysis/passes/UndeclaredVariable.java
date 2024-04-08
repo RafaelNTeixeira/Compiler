@@ -68,11 +68,26 @@ public class UndeclaredVariable extends AnalysisVisitor {
             if (localVar.getName().equals(assignElements.get(0).get("name"))) {
                 // Se for do tipo array só pode dar assign a elementos do tipo array
                 if (localVar.getType().isArray()) {
-                    if (!assignElements.get(1).getKind().equals("ArrayInit")) valid = false;
+                    if (!assignElements.get(1).getKind().equals("ArrayInit")) {
+                        valid = false;
+                        break;
+                    }
                 }
                 // Se não for do tipo array, não pode dar assign a elementos do tipo array
                 else {
-                    if (assignElements.get(1).getKind().equals("ArrayInit")) valid = false;
+                    if (assignElements.get(1).getKind().equals("ArrayInit")) {
+                        valid = false;
+                        break;
+                    }
+                    // Ex: caso em que a = a[10] e 'a' é int
+                    // se a variável for do tipo array
+                    if (assignElements.get(1).getKind().equals("ArrayAccess")) {
+                        // e tiver o mesmo nome que a variável da direita, dá erro (Variável esquerda nesta fase já não é array)
+                        if (assignElements.get(1).getChildren().get(0).get("name").equals(assignElements.get(0).get("name"))) {
+                            valid = false;
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -123,6 +138,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
                                                 valid = false;
                                             }
                                         }
+
                                     }
                                 }
                             }
@@ -357,7 +373,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
        var methodChildren = method.getChildren();
        var assignments = method.getChildren("AssignStmt");
 
-       // Ciclo para guardar FunctionCalls e o número de parametros dado a cada chamada de função
+       // Ciclo para guardar FunctionCalls e variável que chama a função
        // Se existirem assignments
        if (!assignments.isEmpty()) {
            // percorremos os assigments
