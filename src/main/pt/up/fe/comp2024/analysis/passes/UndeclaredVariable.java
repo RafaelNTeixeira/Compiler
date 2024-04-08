@@ -68,7 +68,24 @@ public class UndeclaredVariable extends AnalysisVisitor {
             if (localVar.getName().equals(assignElements.get(0).get("name"))) {
                 // Se for do tipo array só pode dar assign a elementos do tipo array
                 if (localVar.getType().isArray()) {
-                    if (!assignElements.get(1).getKind().equals("ArrayInit") && !assignElements.get(1).getKind().equals("NewArray")) {
+                    // Testar para quando o assign é feito com uma chamada a uma função que retorna um array
+                    if (assignElements.get(1).getKind().equals("FunctionCall")) {
+                        var functionCallReturn = symbolTable.getReturnType(assignElements.get(1).get("methodName"));
+                        var retType = functionCallReturn.getName();
+                        var isRetArray = functionCallReturn.isArray();
+                        // como estamos a verificar se uma variável array recebe um array na chamada a uma função, se no retorno não receber array dá erro
+                        if (!isRetArray) {
+                            valid = false;
+                            break;
+                        }
+                        // se os tipos forem diferentes, dá erro
+                        if (!retType.equals(localVar.getType().getName())) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    // Testar para quando o assign é feito com a uma array
+                    else if (!assignElements.get(1).getKind().equals("ArrayInit") && !assignElements.get(1).getKind().equals("NewArray")) {
                         valid = false;
                         break;
                     }
@@ -79,7 +96,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
                         valid = false;
                         break;
                     }
-                    // Ex: caso em que a = a[10] e 'a' é int
+                    // Ex: caso em que a = a[10] e 'a' é do tipo int
                     // se a variável for do tipo array
                     if (assignElements.get(1).getKind().equals("ArrayAccess")) {
                         // e tiver o mesmo nome que a variável da direita, dá erro (Variável esquerda nesta fase já não é array)
@@ -464,7 +481,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
            }
        }
 
-       // Analisar se uma variável ao chamar uma função, esta recebe o tipo de retorno correto
+       // Analisar se uma variável ao chamar uma função recebe o tipo de retorno correto
         // percorremos as chamadas feitas a funções até agora
        for (Pair<JmmNode, JmmNode> functionCalled : functionsCalled) {
             // se coincidir com o método a analisar atualmente, estudamos esse método
@@ -488,10 +505,33 @@ public class UndeclaredVariable extends AnalysisVisitor {
                             // procuramos pelo return statement para verificar o seu tipo
                             for (var child : methodChildren) {
                                 if (child.getKind().equals("ReturnStmt")) {
-                                    // variável que guarda o valor de return do método a analisar agora
-                                    var variableThatCalledFunctionType = functionCalled.b.getChildren().get(0).get("value");
-                                    // se os tipos de retorno forem diferentes, dá erro
-                                    if (!returnType.getName().equals(variableThatCalledFunctionType)) valid = false;
+                                    var variableThatCalledFunctionKind = functionCalled.b.getChildren().get(0).getKind();
+                                    // se a variável que chamou a função é um inteiro, o return de um vargars tem que ser um array access
+                                    if (variableThatCalledFunctionKind.equals("Integer")) {
+                                        // tipo da variável que guarda o valor de return do método a analisar agora
+                                        var variableThatCalledFunctionType = functionCalled.b.getChildren().get(0).get("value");
+
+                                        // se os tipos de retorno forem diferentes ou se não for um array access, dá erro
+                                        if (!returnType.getName().equals(variableThatCalledFunctionType)) valid = false;
+                                        if (!child.getChildren().get(0).getKind().equals("ArrayAccess")) valid = false;
+                                    }
+                                    // se a variável que chamou a função é um array, o return de um vargars pode o ser parâmetro do varargs
+                                    else if (variableThatCalledFunctionKind.equals("Array")) {
+                                        Boolean found = false;
+                                        for (var returnElement : child.getChildren()) {
+                                            // se o retorno for o parametro vargars (parametro é automaticamento array)
+                                            for (var param : table.getParameters(currentMethod)) {
+                                                if (found) break;
+                                                if (returnElement.hasAttribute("name")) {
+                                                    if (returnElement.get("name").equals(param.getName())) {
+                                                        found = true;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if (!found) valid = false;
+                                    }
                                 }
                             }
                         }
