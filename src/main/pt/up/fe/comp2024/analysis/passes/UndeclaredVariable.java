@@ -331,6 +331,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
         currentMethod = method.get("methodName");
 
         List<JmmNode> ifConditions = method.getChildren("IfCondition");
+        List<JmmNode> whileConditions = method.getChildren("WhileLoop");
         boolean valid = true;
         JmmNode invalidIf = method;
         var methods = table.getMethods();
@@ -340,15 +341,27 @@ public class UndeclaredVariable extends AnalysisVisitor {
         Pair<String, List<Symbol>> pairLocals = new Pair<>(currentMethod, localsList);
         allLocalVariables.add(pairLocals);
 
-
+        // Testar validade de uma condição if
        for (JmmNode ifCondition : ifConditions) {
            var operatorUsed = ifCondition.getChildren().get(0).getKind();
            // se conter BinaryExpr (conta aritmética sem operadores de comparação), é suposto dar erro
            if (operatorUsed.equals("BinaryExpr")) {
                invalidIf = ifCondition;
                valid = false;
+               break;
            }
        }
+
+       // Testar validade da condição de um loop while
+        for (JmmNode whileCondition : whileConditions) {
+            var operatorUsed = whileCondition.getChildren().get(0).getKind();
+            // se conter BinaryExpr (conta aritmética sem operadores de comparação), é suposto dar erro
+            if (operatorUsed.equals("BinaryExpr")) {
+                invalidIf = whileCondition;
+                valid = false;
+                break;
+            }
+        }
 
        // Verificar se o método chamado existe
        // O Kind "Expression" pode conter o Kind "FunctionCall"
