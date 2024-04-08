@@ -196,21 +196,27 @@ public class UndeclaredVariable extends AnalysisVisitor {
             found = false;
             // se for variável
             if (returnElement.getKind().equals("VarRefExpr")) {
-                // procura nas variáveis locais se existe
-                for (var localVar : localVariables) {
-                    if (localVar.getName().equals(returnElement.get("name"))) {
+                if (localVariables != null) {
+                    // procura nas variáveis locais se existe
+                    for (var localVar : localVariables) {
+                        if (localVar.getName().equals(returnElement.get("name"))) {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                // se já encontrou, verifica se a próxima variável no return, se existir, é declarada
+                // se a função não tiver parametros, não vale a pena verificá-los
+                if (found || parameters == null) continue;
+                // procura nos parametros da função atual se a variável existe
+                for (var param : parameters) {
+                    if (param.getName().equals(returnElement.get("name"))) {
                         found = true;
                         break;
                     }
                 }
-                // se já encontrou, verifica se a próxima variável no return, se existir, é declarada
-                if (found) continue;
-                // procura nos parametros da função atual se a variável existe
-                for (var param : parameters) {
-                    if (param.getName().equals(returnElement.get("name"))) {
-                        break;
-                    }
-                }
+                if (found) break;
                 // se não existir, dá erro
                 valid = false;
             }
