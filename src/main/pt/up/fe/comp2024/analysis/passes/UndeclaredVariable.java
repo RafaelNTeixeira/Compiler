@@ -75,7 +75,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
                 }
                 // Se não for do tipo array, não pode dar assign a elementos do tipo array
                 else {
-                    if (assignElements.get(1).getKind().equals("ArrayInit")) {
+                    if (assignElements.get(1).getKind().equals("ArrayInit") || assignElements.get(1).getKind().equals("NewArray")) {
                         valid = false;
                         break;
                     }
@@ -178,6 +178,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
         List<JmmNode> returnElements = returnStatm.getDescendants();
         var localVariables = symbolTable.getLocalVariables(currentMethod);
         var parameters = symbolTable.getParameters(currentMethod);
+        Boolean valid = true;
 
         for (JmmNode returnElement : returnElements) {
             if (returnElement.hasAttribute("name")) {
@@ -189,7 +190,31 @@ public class UndeclaredVariable extends AnalysisVisitor {
             }
         }
 
-        Boolean valid = true;
+        Boolean found = false;
+        // Verificar se as variáveis de retorno existem
+        for (var returnElement : returnElements) {
+            found = false;
+            // se for variável
+            if (returnElement.getKind().equals("VarRefExpr")) {
+                // procura nas variáveis locais se existe
+                for (var localVar : localVariables) {
+                    if (localVar.getName().equals(returnElement.get("name"))) {
+                        found = true;
+                        break;
+                    }
+                }
+                // se já encontrou, verifica se a próxima variável no return, se existir, é declarada
+                if (found) continue;
+                // procura nos parametros da função atual se a variável existe
+                for (var param : parameters) {
+                    if (param.getName().equals(returnElement.get("name"))) {
+                        break;
+                    }
+                }
+                // se não existir, dá erro
+                valid = false;
+            }
+        }
 
         // Check if returnTypes are the same
         for (int i = 0; i < returnTypes.size()-1; i++) {
