@@ -47,8 +47,237 @@ public class UndeclaredVariable extends AnalysisVisitor {
         addVisit("VarArgs", this::visitVarArgs);
         addVisit("VarArgs", this::visitVarArgs);
         addVisit("ImportStatment", this::visitImports);
-        addVisit("Expression", this::visitExpressions);
+        addVisit("Expression", this::visitFunctionCall);
         addVisit("IfCondition", this::visitIfConditions);
+        addVisit("WhileLoop", this::visitWhileLoops);
+        addVisit("ArrayInit", this::visitArrayInit);
+        addVisit("NewClass", this::visitNewClass);
+        addVisit("Expression", this::visitExpression);
+    }
+    /*
+    private Void example(JmmNode Node, SymbolTable symbolTable) {
+        boolean valid = true;
+
+        if (!valid) {
+            // Create error report
+            var message = String.format("Invalid: '%s'");
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(Node),
+                    NodeUtils.getColumn(Node),
+                    message,
+                    null)
+            );
+        }
+
+        return null;
+    }
+    */
+
+    // Se estiver a causar problemas apagar
+    private Void visitExpression(JmmNode expressionNode, SymbolTable symbolTable) {
+        boolean valid = true;
+
+        // Se faz uma chamada a uma função
+        if (expressionNode.getChildren().get(0).getKind().equals("FunctionCall")) {
+            var methodNameCalled = expressionNode.getChildren().get(0).get("methodName");
+            String localVarTypeThatCalledFunction = "";
+            boolean methodFound =  false;
+            boolean localVarFound =  false;
+            boolean paramFound =  false;
+            boolean cameFromImport = false;
+
+            // Verificar se a variável que chama o método existe nas variáveis locais
+            var varThatCalledMethod = expressionNode.getChildren().get(0).getChildren("VarRefExpr").get(0);
+            for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                if (localVar.getName().equals(varThatCalledMethod.get("name"))) {
+                    localVarFound = true;
+                    localVarTypeThatCalledFunction = localVar.getType().getName();
+                    break;
+                }
+            }
+            if (localVarFound) valid = false;
+
+            // Verificar se a variável que chama o método existe nos parâmetros
+            for (var param : symbolTable.getParameters(currentMethod)) {
+                if (param.getName().equals(varThatCalledMethod.get("name"))) {
+                    paramFound = true;
+                    break;
+                }
+            }
+            if (paramFound) valid = false;
+
+            for (var importName : symbolTable.getImports()) {
+                // Verificar se a variável que chama o método tem um tipo importado
+                if (importName.equals(localVarTypeThatCalledFunction)) {
+                    cameFromImport = true;
+                    valid = true;
+                    break;
+                }
+                // Verificar se a variável que chama o método tem o tipo da classe que extende uma superclasse
+                else if (localVarTypeThatCalledFunction.equals(symbolTable.getClassName())) {
+                    if (importName.equals(symbolTable.getSuper())) {
+                        cameFromImport = true;
+                        valid = true;
+                        break;
+                    }
+                }
+            }
+
+            // se a variável local que chamou a função possui o tipo do import, assume-se que a função chamada já existe
+            if (!cameFromImport) {
+                // Verificar se o método chamado existe
+                for (var method : symbolTable.getMethods()) {
+                    if (methodNameCalled.equals(method)) {
+                        methodFound = true;
+                        break;
+                    }
+                }
+                if (!methodFound) valid = false;
+            }
+        }
+
+        if (!valid) {
+            // Create error report
+            var message = String.format("Invalid expression: '%s'");
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(expressionNode),
+                    NodeUtils.getColumn(expressionNode),
+                    message,
+                    null)
+            );
+        }
+
+        return null;
+    }
+
+    private Void visitNewClass(JmmNode newClassNode, SymbolTable symbolTable) {
+        boolean valid = true;
+
+        // verificar se classe é importada, se sim, está certo
+        // assign do tipo a = new A()
+        var elementsAssignmentNode = newClassNode.getParent().getChildren();
+        var importNames = symbolTable.getImports();
+        var foundImportName = true;
+        if (elementsAssignmentNode.get(1).getKind().equals("NewClass")) {
+            // se conter nome de qualquer import, assume-se como aceite. Ex: A a; B b; a = new B();
+            for (var importName : importNames) {
+                if (importName.equals(elementsAssignmentNode.get(1).get("className"))) {
+                    break;
+                }
+                if (!foundImportName) {
+                    valid = false;
+                }
+            }
+        }
+
+
+        if (!valid) {
+            // Create error report
+            var message = String.format("Invalid New Class: '%s'");
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(newClassNode),
+                    NodeUtils.getColumn(newClassNode),
+                    message,
+                    null)
+            );
+        }
+
+        return null;
+    }
+
+    private Void visitArrayInit(JmmNode arrayInitNode, SymbolTable symbolTable) {
+        boolean valid = true;
+        String type = "";
+
+        // Ex: new int[2]
+        // verificar se os atributos dentro de [] são válidos
+        var valuesGiven = arrayInitNode.getChildren();
+        var varStoring = arrayInitNode.getParent().getChildren("VarRefExpr").get(0);
+        // Se for uma variável local
+
+        for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+            // se a variável que está a guardar for array é aceite
+            if (localVar.getName().equals(varStoring.get("name")) && localVar.getType().isArray()) {
+                // se esta for do tipo int
+                if (localVar.getType().getName().equals("int")) {
+                    for (var valueGiven : valuesGiven) {
+                        if (!valueGiven.getKind().equals("IntegerLiteral")) {
+                            valid = false;
+                            break;
+                        }
+                        type = "int";
+                    }
+                }
+                // Isto é válido?
+                if (localVar.getType().getName().equals("boolean")) {
+                    for (var valueGiven : valuesGiven) {
+                        if (!valueGiven.get("name").equals("true") && !valueGiven.get("name").equals("false")) {
+                            valid = false;
+                            break;
+                        }
+                        type = "boolean";
+                    }
+                }
+            }
+        }
+
+        if (!valid) {
+            // Create error report
+            var message = String.format("Invalid new array creation: '%s'");
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(arrayInitNode),
+                    NodeUtils.getColumn(arrayInitNode),
+                    message,
+                    null)
+            );
+        }
+        else {
+            arrayInitNode.put("type", type);
+        }
+
+        return null;
+    }
+
+    private Void visitWhileLoops(JmmNode whileNode, SymbolTable symbolTable) {
+        boolean valid = true;
+
+        var operatorUsed = whileNode.getChildren().get(0);
+        var operatorUsedKind = operatorUsed.getKind();
+        // se conter BinaryExpr (conta aritmética sem operadores de comparação), é suposto dar erro
+        if (operatorUsedKind.equals("BinaryExpr")) {
+            valid = false;
+        }
+        // a condição é feita com uma variável
+        else if (operatorUsedKind.equals("VarRefExpr")) {
+            // procuramos pela variável utilizada para estudar o seu tipo
+            for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                if (localVar.getName().equals(operatorUsed.get("name"))) {
+                    // se não for do tipo booleano dá erro
+                    if (!localVar.getType().getName().equals("boolean")) {
+                        valid = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!valid) {
+            // Create error report
+            var message = String.format("Invalid while condition: '%s'");
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(whileNode),
+                    NodeUtils.getColumn(whileNode),
+                    message,
+                    null)
+            );
+        }
+
+        return null;
     }
 
     private Void visitIfConditions(JmmNode ifConditionNode, SymbolTable symbolTable) {
@@ -84,25 +313,18 @@ public class UndeclaredVariable extends AnalysisVisitor {
         return null;
     }
 
-    private Void visitExpressions(JmmNode expressionNode, SymbolTable symbolTable) {
+    private Void visitFunctionCall(JmmNode functionCallNode, SymbolTable symbolTable) {
         boolean valid = true;
         var methods = symbolTable.getMethods();
 
         // do tipo a.bar();
         // percorrer por todos os métodos e verificar se numa FunctionCall o método existe
-        var functionCalls = expressionNode.getChildren("FunctionCall");
-        // se existir chamadas a funções
-        if (!functionCalls.isEmpty()) {
-            for (var functionCall : functionCalls) {
-                // verificar se o método chamado existe
-                for (var methodName : methods) {
-                    if (methodName.equals(functionCall.get("methodName"))) {
-                        valid = true;
-                        break;
-                    }
-                    valid = false;
-                }
+        for (var methodName : methods) {
+            if (methodName.equals(functionCallNode.get("methodName"))) {
+                valid = true;
+                break;
             }
+            valid = false;
         }
 
         if (!valid) {
@@ -110,12 +332,13 @@ public class UndeclaredVariable extends AnalysisVisitor {
             var message = String.format("Call to non existent method: '%s'");
             addReport(Report.newError(
                     Stage.SEMANTIC,
-                    NodeUtils.getLine(expressionNode),
-                    NodeUtils.getColumn(expressionNode),
+                    NodeUtils.getLine(functionCallNode),
+                    NodeUtils.getColumn(functionCallNode),
                     message,
                     null)
             );
-
+        } else {
+            functionCallNode.put("type", functionCallNode.get("value"));
         }
 
         return null;
@@ -164,24 +387,9 @@ public class UndeclaredVariable extends AnalysisVisitor {
     private Void visitAssignStatement(JmmNode assignStatm, SymbolTable symbolTable) {
         List<JmmNode> assignElements = assignStatm.getChildren();
         var localsVar = symbolTable.getLocalVariables(currentMethod);
+        var importNames = symbolTable.getImports();
 
-        Boolean valid = true;
-
-        var arrayInits = new ArrayList<JmmNode>();
-        for (var alignElement : assignElements) {
-            if (alignElement.getKind().equals("ArrayInit")) {
-                arrayInits.add(alignElement);
-            }
-        }
-        // verificar se os valores dentro do array são do mesmo tipo
-        for (int i = 0; i < arrayInits.size(); i++) {
-            if (arrayInits.get(i).getChildren().size() > 1) {
-                var firstElement = arrayInits.get(i).getChildren().get(i);
-                var secondElement = arrayInits.get(i).getChildren().get(i + 1);
-
-                if (!firstElement.getKind().equals(secondElement.getKind())) valid = false;
-            }
-        }
+        boolean valid = true;
 
         // Lidar com arrays
         for (var localVar : localsVar) {
@@ -230,22 +438,8 @@ public class UndeclaredVariable extends AnalysisVisitor {
             }
         }
 
-        // assign do tipo a = new A()
-        var importNames = symbolTable.getImports();
-        var foundImportName = true;
-        if (assignElements.get(1).getKind().equals("NewClass")) {
-            // se conter nome de qualquer import, assume-se como aceite. Ex: A a; B b; a = new B();
-            for (var importName : importNames) {
-                if (importName.equals(assignElements.get(1).get("className"))) {
-                    break;
-                }
-                if (!foundImportName) {
-                    valid = false;
-                }
-            }
-        }
         // Para variáveis que dão assign a inteiros
-        else if (assignElements.get(1).getKind().equals("IntegerLiteral")) {
+        if (assignElements.get(1).getKind().equals("IntegerLiteral")) {
             for (var localVar : localsVar) {
                 if (localVar.getName().equals(assignElements.get(0).get("name"))) {
                     var expectedValueType = localVar.getType().getName();
@@ -316,7 +510,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
         List<JmmNode> returnElements = returnStatm.getDescendants();
         var localVariables = symbolTable.getLocalVariables(currentMethod);
         var parameters = symbolTable.getParameters(currentMethod);
-        Boolean valid = true;
+        boolean valid = true;
 
         for (JmmNode returnElement : returnElements) {
             if (returnElement.hasAttribute("name")) {
@@ -328,7 +522,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
             }
         }
 
-        Boolean found = false;
+        boolean found = false;
         // Verificar se as variáveis de retorno existem
         for (var returnElement : returnElements) {
             found = false;
@@ -376,61 +570,8 @@ public class UndeclaredVariable extends AnalysisVisitor {
             }
         }
 
-        // Check if functionCall is calling var valid type
-        if (returnElements.get(0).getKind().equals("FunctionCall")) {
-            var importNames = symbolTable.getImports();
-            var localVariablesCurrentMethod = symbolTable.getLocalVariables(currentMethod);
-            var varThatCallsFunction = returnElements.get(1).get("name");
-            String varThatCallsFunctionType = "";
-
-            // Checks if in (Ex:) a.foo(), a is a local variable from the current method
-            boolean isCalledVariableALocalVariable = false;
-            for (var localVariable : localVariablesCurrentMethod) {
-                for (var returnElement : returnElements) {
-                    if (returnElement.hasAttribute("name")) {
-                        if (localVariable.getName().equals(varThatCallsFunction)) {
-                            isCalledVariableALocalVariable = true;
-                            varThatCallsFunctionType = localVariable.getType().getName();
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // Checks if in (Ex:) a.foo(), a comes from an import
-            boolean isCalledVariableFromImport = false;
-            if (isCalledVariableALocalVariable) {
-                for (var importName : importNames) {
-                    if (importName.equals(varThatCallsFunctionType)) {
-                        isCalledVariableFromImport = true;
-                        break;
-                    }
-                }
-            }
-            if (!isCalledVariableFromImport) {
-                var methodCalled = returnElements.get(0).get("methodName");
-
-                var functionCallChildren = returnElements.get(0).getChildren();
-                var varNameAddedToReturnMethod = functionCallChildren.get(functionCallChildren.size() - 1).get("name");
-                String varTypeAddedToReturnMethod = "";
-
-                // extrair tipo da variável a ser chamada na função de retorno
-                for (var localVariable : localVariables) {
-                    if (localVariable.getName().equals(varNameAddedToReturnMethod)) {
-                        varTypeAddedToReturnMethod = localVariable.getType().getName();
-                    }
-                }
-
-                String finalVarTypeAddedToReturnMethod = varTypeAddedToReturnMethod;
-
-                if (symbolTable.getParameters(methodCalled).stream()
-                        .noneMatch(param -> param.getType().getName().equals(finalVarTypeAddedToReturnMethod))) {
-                    valid = false;
-                }
-            }
-        }
         // se o return for de uma conta aritmética
-        else if (returnElements.get(0).getKind().equals("BinaryExpr")) {
+        if (returnElements.get(0).getKind().equals("BinaryExpr")) {
             for (var returnElement : returnElements) {
                 // só é preciso analisar variáveis int. Ignora os operadores.
                 if (!returnElement.getKind().equals("BinaryExpr")) {
@@ -510,71 +651,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
         Pair<String, List<Symbol>> pairLocals = new Pair<>(currentMethod, localsList);
         allLocalVariables.add(pairLocals);
 
-        // Testar validade de uma condição if
-       for (JmmNode ifCondition : ifConditions) {
-           var operatorUsed = ifCondition.getChildren().get(0).getKind();
-           // se conter BinaryExpr (conta aritmética sem operadores de comparação), é suposto dar erro
-           if (operatorUsed.equals("BinaryExpr")) {
-               invalidIf = ifCondition;
-               valid = false;
-               break;
-           }
-           // se for uma operação de comparação
-           else if (operatorUsed.equals("BinaryOp")) {
-               var operationNode = ifCondition.getChildren("BinaryOp").get(0);
-
-               // se possuir contas aritméticas
-               // analisa os tipos da comparação
-               //if (operationNode.)
-
-           }
-       }
-
-       // Testar validade da condição de um loop while
-        for (JmmNode whileCondition : whileConditions) {
-            var operatorUsed = whileCondition.getChildren().get(0);
-            var operatorUsedKind = operatorUsed.getKind();
-            // se conter BinaryExpr (conta aritmética sem operadores de comparação), é suposto dar erro
-            if (operatorUsedKind.equals("BinaryExpr")) {
-                invalidIf = whileCondition;
-                valid = false;
-                break;
-            }
-            // a condição é feita com uma variável
-            else if (operatorUsedKind.equals("VarRefExpr")) {
-                // procuramos pela variável utilizada para estudar o seu tipo
-                for (var localVar : table.getLocalVariables(currentMethod)) {
-                    if (localVar.getName().equals(operatorUsed.get("name"))) {
-                        // se não for do tipo booleano dá erro
-                        if (!localVar.getType().getName().equals("boolean")) {
-                            valid = false;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-       // Verificar se o método chamado existe
-       // O Kind "Expression" pode conter o Kind "FunctionCall"
-       var expressions = method.getChildren("Expression");
-       for (var expression : expressions) {
-           var functionCalls = expression.getChildren("FunctionCall");
-           // se existir chamadas a funções
-           if (!functionCalls.isEmpty()) {
-               for (var functionCall : functionCalls) {
-                   // verificar se o método chamado existe
-                   for (var methodName : methods) {
-                       if (methodName.equals(functionCall.get("methodName"))) {
-                           valid = true;
-                           break;
-                       }
-                       valid = false;
-                   }
-               }
-           }
-       }
-
        var methodChildren = method.getChildren();
        var assignments = method.getChildren("AssignStmt");
 
@@ -646,7 +722,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
                                     }
                                     // se a variável que chamou a função é um array, o return de um vargars pode o ser parâmetro do varargs
                                     else if (variableThatCalledFunctionKind.equals("Array")) {
-                                        Boolean found = false;
+                                        boolean found = false;
                                         for (var returnElement : child.getChildren()) {
                                             // se o retorno for o parametro vargars (parametro é automaticamento array)
                                             for (var param : table.getParameters(currentMethod)) {
@@ -692,12 +768,24 @@ public class UndeclaredVariable extends AnalysisVisitor {
         // Var is a field, return
         if (table.getFields().stream()
                 .anyMatch(param -> param.getName().equals(varRefName))) {
+            if (varDecl.getChildren().get(0).getKind().equals("Array")) {
+                varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+            }
+            else {
+                varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+            }
             return null;
         }
 
         // Var is a parameter, return
         if (table.getParameters(currentMethod).stream()
                 .anyMatch(param -> param.getName().equals(varRefName))) {
+            if (varDecl.getChildren().get(0).getKind().equals("Array")) {
+                varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+            }
+            else {
+                varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+            }
             return null;
         }
 

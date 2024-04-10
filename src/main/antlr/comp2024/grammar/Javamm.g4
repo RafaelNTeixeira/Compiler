@@ -109,8 +109,8 @@ stmt
     | IF LPAREN expr RPAREN stmt (ELSEIF LPAREN expr RPAREN stmt)* ELSE stmt #IfCondition //
     | WHILE LPAREN expr RPAREN stmt #WhileLoop //
     | expr EQUALS expr SEMI #AssignStmt //
-    | RETURN expr SEMI #ReturnStmt //
     | ID EQUALS expr SEMI #AssignVar //
+    | RETURN expr SEMI #ReturnStmt //
     | ID EQUALS LSQUARE expr RSQUARE EQUALS expr SEMI #AssignArray //
     ;
 
