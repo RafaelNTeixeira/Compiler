@@ -92,7 +92,7 @@ type
 methodDecl locals[boolean isPublic=false]
     : (PUBLIC {$isPublic=true;})?
         type methodName=ID
-        LPAREN (param (COMMA param)*)? RPAREN // pode aceitar funcao
+        LPAREN (param (COMMA param)*)? RPAREN //
         LCURLY varDecl* stmt* RCURLY
     | (PUBLIC)? STATIC VOID methodName=ID LPAREN param RPAREN
               LCURLY varDecl* stmt* RCURLY
@@ -120,7 +120,7 @@ expr
     | methodName=ID LPAREN (expr (COMMA expr)* )? RPAREN #FunctionCall //
     | expr DOT methodName=ID LPAREN (expr (COMMA expr)* )? RPAREN #FunctionCall //
     | NEW INT LSQUARE expr RSQUARE #NewArray //
-    | NEW className=ID LPAREN (expr (COMMA expr)* )? RPAREN #NewClass // Pode ser feita assim?
+    | NEW className=ID LPAREN (expr (COMMA expr)* )? RPAREN #NewClass //
     | expr LSQUARE expr RSQUARE #ArrayAccess //
     | LSQUARE ( expr ( COMMA expr )* )? RSQUARE #ArrayInit //
     | expr DOT LEN #Length //

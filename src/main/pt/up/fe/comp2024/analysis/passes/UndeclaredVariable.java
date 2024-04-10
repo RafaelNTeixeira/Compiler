@@ -52,6 +52,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
         addVisit("ArrayInit", this::visitArrayInit);
         addVisit("NewClass", this::visitNewClass);
         addVisit("Expression", this::visitExpression);
+        addVisit("ArrayAccess", this::visitArrayAccess);
     }
     /*
     private Void example(JmmNode Node, SymbolTable symbolTable) {
@@ -72,6 +73,47 @@ public class UndeclaredVariable extends AnalysisVisitor {
         return null;
     }
     */
+
+    private Void visitArrayAccess(JmmNode arrayAccessNode, SymbolTable symbolTable) {
+        boolean valid = true;
+
+        // Verificar se valor dentro de [] é int
+        var indexNode = arrayAccessNode.getChildren().get(1);
+        // Verificar se é uma constante
+        if (!indexNode.getKind().equals("IntegerLiteral")) {
+            // Verificar se é uma variável local
+            for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                if (localVar.getName().equals(indexNode.get("name"))) {
+                    if (!localVar.getType().getName().equals("int") || localVar.getType().isArray()) {
+                        valid = false;
+                    }
+                }
+            }
+            // Verificar se é um parametro de função atual
+            for (var param : symbolTable.getParameters(currentMethod)) {
+                if (param.getName().equals(indexNode.get("name"))) {
+                    if (!param.getType().getName().equals("int") || param.getType().isArray()) {
+                        valid = false;
+                    }
+                }
+            }
+
+        }
+
+        if (!valid) {
+            // Create error report
+            var message = String.format("Invalid array access: '%s'");
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(arrayAccessNode),
+                    NodeUtils.getColumn(arrayAccessNode),
+                    message,
+                    null)
+            );
+        }
+
+        return null;
+    }
 
     // Se estiver a causar problemas apagar
     private Void visitExpression(JmmNode expressionNode, SymbolTable symbolTable) {
@@ -281,6 +323,10 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
     private Void visitIfConditions(JmmNode ifConditionNode, SymbolTable symbolTable) {
         boolean valid = true;
+        boolean diffOperationInsideIf = false;
+        boolean diffTypesInsideIf = false;
+        int binaryExprCounter = 0;
+        int binaryOpCounter = 0;
 
         var operatorUsed = ifConditionNode.getChildren().get(0).getKind();
         // se conter BinaryExpr (conta aritmética sem operadores de comparação), é suposto dar erro
@@ -289,12 +335,17 @@ public class UndeclaredVariable extends AnalysisVisitor {
         }
         // se for uma operação de comparação
         else if (operatorUsed.equals("BinaryOp")) {
+            var operations = ifConditionNode.getDescendants();
             var operationNode = ifConditionNode.getChildren("BinaryOp").get(0);
 
-            // se possuir contas aritméticas
-            // analisa os tipos da comparação
-            //if (operationNode.)
-
+            for (var operation : operations) {
+                if (operation.getKind().equals("BinaryExpr")) {
+                    binaryExprCounter++;
+                }
+                else if (operation.getKind().equals("BinaryOp")) {
+                    binaryOpCounter++;
+                }
+            }
         }
 
         if (!valid) {
