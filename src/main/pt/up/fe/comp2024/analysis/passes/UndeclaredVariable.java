@@ -53,6 +53,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
         addVisit("NewClass", this::visitNewClass);
         addVisit("Expression", this::visitExpression);
         addVisit("ArrayAccess", this::visitArrayAccess);
+        addVisit("Length", this::visitLength);
     }
     /*
     private Void example(JmmNode Node, SymbolTable symbolTable) {
@@ -73,6 +74,45 @@ public class UndeclaredVariable extends AnalysisVisitor {
         return null;
     }
     */
+
+    private Void visitLength(JmmNode lengthNode, SymbolTable symbolTable) {
+        boolean valid = true;
+
+        // Verificar se é utilizado em array types. Se não for, dá erro
+        var varUsedOnNode = lengthNode.getChildren().get(0);
+        // Verificar se length é chamada em variáveis locais
+        for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+            if (localVar.getName().equals(varUsedOnNode.get("name"))) {
+                if (!localVar.getType().isArray()) {
+                    valid = false;
+                }
+            }
+        }
+
+        // Verificar se length é chamada em parametros da função atual
+        for (var param : symbolTable.getParameters(currentMethod)) {
+            if (param.getName().equals(varUsedOnNode.get("name"))) {
+                if (!param.getType().isArray()) {
+                    valid = false;
+                }
+            }
+        }
+
+
+        if (!valid) {
+            // Create error report
+            var message = String.format("Invalid length function call: '%s'");
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(lengthNode),
+                    NodeUtils.getColumn(lengthNode),
+                    message,
+                    null)
+            );
+        }
+
+        return null;
+    }
 
     private Void visitArrayAccess(JmmNode arrayAccessNode, SymbolTable symbolTable) {
         boolean valid = true;
