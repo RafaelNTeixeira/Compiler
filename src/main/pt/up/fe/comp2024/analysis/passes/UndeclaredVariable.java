@@ -45,7 +45,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
         addVisit("Void", this::visitVoid);
         addVisit("Var", this::visitVar);
         addVisit("VarArgs", this::visitVarArgs);
-        addVisit("VarArgs", this::visitVarArgs);
         addVisit("ImportStatment", this::visitImports);
         addVisit("Expression", this::visitFunctionCall);
         addVisit("IfCondition", this::visitIfConditions);
