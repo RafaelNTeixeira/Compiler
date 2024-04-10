@@ -8,6 +8,7 @@ import pt.up.fe.specs.util.classmap.FunctionClassMap;
 import pt.up.fe.specs.util.exceptions.NotImplementedException;
 import pt.up.fe.specs.util.utilities.StringLines;
 
+import javax.lang.model.type.NullType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -30,6 +31,7 @@ public class JasminGenerator {
 
     Method currentMethod;
 
+    Field currentField;
     private final FunctionClassMap<TreeNode, String> generators;
 
     public JasminGenerator(OllirResult ollirResult) {
@@ -42,7 +44,9 @@ public class JasminGenerator {
         this.generators = new FunctionClassMap<>();
         generators.put(ClassUnit.class, this::generateClassUnit);
         generators.put(Method.class, this::generateMethod);
+        generators.put(Field.class, this::generateField);
         generators.put(AssignInstruction.class, this::generateAssign);
+        //generators.put(CallInstruction.class, this::generateCall);
         generators.put(SingleOpInstruction.class, this::generateSingleOp);
         generators.put(LiteralElement.class, this::generateLiteral);
         generators.put(Operand.class, this::generateOperand);
@@ -73,8 +77,17 @@ public class JasminGenerator {
         var className = ollirResult.getOllirClass().getClassName();
         code.append(".class ").append(className).append(NL).append(NL);
 
-        // TODO: Hardcoded to Object, needs to be expanded
-        code.append(".super java/lang/Object").append(NL);
+        if(ollirResult.getOllirClass().getSuperClass() != null) {
+            var superName = ollirResult.getOllirClass().getSuperClass();
+            code.append(".super ").append(superName).append(NL).append(NL);
+        } else {
+            code.append(".super java/lang/Object").append(NL).append(NL);
+        }
+
+        for (var field : ollirResult.getOllirClass().getFields()){
+            code.append(generators.apply(field));
+        }
+        code.append(NL);
 
         // generate a single constructor method
         var defaultConstructor = """
@@ -103,6 +116,58 @@ public class JasminGenerator {
         return code.toString();
     }
 
+    private String generateField(Field field) {
+        var code = new StringBuilder();
+        currentField = field;
+
+        var fieldName = field.getFieldName();
+        String jasminType = getJasminType(field.getFieldType());
+
+        var modifier = field.getFieldAccessModifier();
+        String modifierName;
+        modifierName = switch (modifier) {
+            case PUBLIC -> "public";
+            case PRIVATE -> "private";
+            case PROTECTED -> "protected";
+            case DEFAULT -> "";
+        };
+
+        code.append(".field ").append(modifierName).append(" ");
+
+        if (field.isStaticField()) {
+            code.append("static ");
+        }
+
+        if (field.isFinalField()) {
+            code.append("final ");
+        }
+
+        currentField = null;
+        code.append(fieldName).append(" ").append(jasminType);
+
+        if (field.isInitialized()) {
+            code.append(" = ").append(field.getInitialValue());
+        }
+        code.append(NL);
+        return code.toString();
+    }
+
+    private static String getJasminType(Type type) {
+        String jasminType;
+        String typeName = type.getTypeOfElement().name();
+
+        jasminType = switch (typeName) {
+            case "INT32" -> "I";
+            case "BOOLEAN" -> "Z";
+            case "ARRAYREF" -> "[";
+            case "OBJECTREF", "CLASS", "THIS" -> "L";
+            case "STRING" -> "Ljava/lang/String;";
+            case "VOID" -> "V";
+            default -> throw new IllegalArgumentException("Unsupported type: " + typeName);
+        };
+        return jasminType;
+    }
+
 
     private String generateMethod(Method method) {
 
@@ -118,8 +183,28 @@ public class JasminGenerator {
 
         var methodName = method.getMethodName();
 
-        // TODO: Hardcoded param types and return type, needs to be expanded
-        code.append("\n.method ").append(modifier).append(methodName).append("(I)I").append(NL);
+        code.append("\n.method ").append(modifier);
+
+        if (method.isStaticMethod()) code.append("static ");
+        if (method.isFinalMethod()) code.append("final ");
+
+        code.append(methodName).append("(");
+
+        if (methodName.equals("main")) {
+            code.append("[Ljava/lang/String;");
+        } else {
+            for(var element : method.getParams()){
+                var eleType = getJasminType(element.getType());
+                code.append(eleType);
+            }
+        }
+
+        code.append(")");
+
+        var returnType = getJasminType(method.getReturnType());
+        code.append(returnType).append(NL);
+
+
 
         // Add limits
         code.append(TAB).append(".limit stack 99").append(NL);
@@ -158,11 +243,38 @@ public class JasminGenerator {
         // get register
         var reg = currentMethod.getVarTable().get(operand.getName()).getVirtualReg();
 
-        // TODO: Hardcoded for int type, needs to be expanded
-        code.append("istore ").append(reg).append(NL);
+        var storeTypeName = assign.getTypeOfAssign().getTypeOfElement().name();
+        String storeType;
+        storeType = switch (storeTypeName) {
+            case "INT32", "BOOLEAN" -> "istore ";
+            case "ARRAYREF", "STRING", "OBJECTREF", "CLASS", "THIS" -> "astore ";
+            case "VOID" -> "store ";
+            default -> throw new IllegalArgumentException("Unsupported type: " + storeTypeName);
+        };
+
+        code.append(storeType).append(reg).append(NL);
 
         return code.toString();
     }
+
+    /*
+    private String generateCall(CallInstruction callInstruction){
+        String code;
+
+        code = switch (callInstruction.getInvocationType()) {
+            case invokevirtual -> null;
+            case invokeinterface -> null;
+            case invokespecial -> null;
+
+            case invokestatic -> null;
+            case NEW -> null;
+            case arraylength -> null;
+            case ldc -> null;
+        };
+
+        return code;
+    }
+    */
 
     private String generateSingleOp(SingleOpInstruction singleOp) {
         return generators.apply(singleOp.getSingleOperand());
@@ -199,11 +311,19 @@ public class JasminGenerator {
 
     private String generateReturn(ReturnInstruction returnInst) {
         var code = new StringBuilder();
+        if (returnInst.hasReturnValue()) code.append(generators.apply(returnInst.getOperand()));
 
-        // TODO: Hardcoded to int return type, needs to be expanded
+        var returnTypeName = returnInst.getElementType().name();
+        String returnType;
 
-        code.append(generators.apply(returnInst.getOperand()));
-        code.append("ireturn").append(NL);
+        returnType = switch (returnTypeName) {
+            case "INT32", "BOOLEAN" -> "ireturn";
+            case "ARRAYREF", "STRING", "OBJECTREF", "CLASS", "THIS" -> "areturn";
+            case "VOID" -> "return";
+            default -> throw new IllegalArgumentException("Unsupported type: " + returnTypeName);
+        };
+
+        code.append(returnType).append(NL);
 
         return code.toString();
     }
