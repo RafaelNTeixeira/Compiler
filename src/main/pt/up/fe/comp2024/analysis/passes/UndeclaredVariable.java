@@ -38,6 +38,90 @@ public class UndeclaredVariable extends AnalysisVisitor {
         addVisit(Kind.VAR_DECL, this::visitVarDecl);
         addVisit(Kind.RETURN_STMT, this::visitRetStatement);
         addVisit(Kind.ASSIGN_STMT, this::visitAssignStatement);
+        addVisit("Array", this::visitArray);
+        addVisit("Integer", this::visitInt);
+        addVisit("Boolean", this::visitBoolean);
+        addVisit("String", this::visitString);
+        addVisit("Void", this::visitVoid);
+        addVisit("Var", this::visitVar);
+        addVisit("VarArgs", this::visitVarArgs);
+        addVisit("VarArgs", this::visitVarArgs);
+        addVisit("ImportStatment", this::visitImports);
+        addVisit("Expression", this::visitExpressions);
+    }
+
+    private Void visitExpressions(JmmNode expressionNode, SymbolTable symbolTable) {
+        boolean valid = true;
+
+        // do tipo a.bar();
+        // verificar se a consegue chamar a função
+        // percorrer por todos os métodos e verificar se numa FunctionCall o método existe
+        if (!expressionNode.getChildren("FunctionCall").isEmpty()) {
+            var functionCall = expressionNode.getChildren("FunctionCall").get(0);
+            var functionCallName = functionCall.get("methodName");
+            boolean found = false;
+            for (var methodName : symbolTable.getMethods()) {
+                if (functionCallName.equals(methodName)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) valid = false;
+        }
+        if (!valid) {
+            // Create error report
+            var message = String.format("Call to non existent method: '%s'");
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(expressionNode),
+                    NodeUtils.getColumn(expressionNode),
+                    message,
+                    null)
+            );
+
+        }
+
+        return null;
+    }
+
+    private Void visitImports(JmmNode importNode, SymbolTable symbolTable) {
+        importNode.put("type", importNode.get("ID"));
+        return null;
+    }
+    private Void visitVarArgs(JmmNode varArgNode, SymbolTable symbolTable) {
+        varArgNode.put("type", varArgNode.get("value"));
+        return null;
+    }
+
+
+    private Void visitVar(JmmNode varNode, SymbolTable symbolTable) {
+        varNode.put("type", varNode.get("value"));
+        return null;
+    }
+
+    private Void visitVoid(JmmNode stringNode, SymbolTable symbolTable) {
+        stringNode.put("type", "void");
+        return null;
+    }
+
+    private Void visitString(JmmNode stringNode, SymbolTable symbolTable) {
+        stringNode.put("type", "String");
+        return null;
+    }
+
+    private Void visitArray(JmmNode arrayNode, SymbolTable symbolTable) {
+        arrayNode.put("type", "int[]");
+        return null;
+    }
+
+    private Void visitInt(JmmNode intNode, SymbolTable symbolTable) {
+        intNode.put("type", "int");
+        return null;
+    }
+
+    private Void visitBoolean(JmmNode booleanNode, SymbolTable symbolTable) {
+        booleanNode.put("type", "boolean");
+        return null;
     }
 
     private Void visitAssignStatement(JmmNode assignStatm, SymbolTable symbolTable) {
@@ -398,6 +482,15 @@ public class UndeclaredVariable extends AnalysisVisitor {
                valid = false;
                break;
            }
+           // se for uma operação de comparação
+           else if (operatorUsed.equals("BinaryOp")) {
+               var operationNode = ifCondition.getChildren("BinaryOp").get(0);
+
+               // se possuir contas aritméticas
+               // analisa os tipos da comparação
+               //if (operationNode.)
+
+           }
        }
 
        // Testar validade da condição de um loop while
@@ -467,7 +560,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
                                    // guardamos a function call e o número de parametros recebidos pela função
                                    Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
                                    functionsCalled.add(pairFunc);
-                                   //var varCallingFunctionType = variableCallingFunction.getChildren().get(0).get("value");
                                }
                                // se variável for um array
                                else if (!variableCallingFunction.getChildren("Array").isEmpty()) {
