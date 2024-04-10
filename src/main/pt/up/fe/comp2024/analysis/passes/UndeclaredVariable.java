@@ -48,13 +48,31 @@ public class UndeclaredVariable extends AnalysisVisitor {
         addVisit("VarArgs", this::visitVarArgs);
         addVisit("ImportStatment", this::visitImports);
         addVisit("Expression", this::visitExpressions);
+        addVisit("IfCondition", this::visitIfConditions);
+    }
+
+    private Void visitIfConditions(JmmNode ifConditionNode, SymbolTable symbolTable) {
+        boolean valid = true;
+
+        if (!valid) {
+            // Create error report
+            var message = String.format("Invalid if condition: '%s'");
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(ifConditionNode),
+                    NodeUtils.getColumn(ifConditionNode),
+                    message,
+                    null)
+            );
+        }
+
+        return null;
     }
 
     private Void visitExpressions(JmmNode expressionNode, SymbolTable symbolTable) {
         boolean valid = true;
 
         // do tipo a.bar();
-        // verificar se a consegue chamar a função
         // percorrer por todos os métodos e verificar se numa FunctionCall o método existe
         if (!expressionNode.getChildren("FunctionCall").isEmpty()) {
             var functionCall = expressionNode.getChildren("FunctionCall").get(0);
@@ -68,6 +86,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
             }
             if (!found) valid = false;
         }
+
         if (!valid) {
             // Create error report
             var message = String.format("Call to non existent method: '%s'");
