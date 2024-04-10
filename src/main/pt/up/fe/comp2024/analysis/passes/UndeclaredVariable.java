@@ -54,6 +54,21 @@ public class UndeclaredVariable extends AnalysisVisitor {
     private Void visitIfConditions(JmmNode ifConditionNode, SymbolTable symbolTable) {
         boolean valid = true;
 
+        var operatorUsed = ifConditionNode.getChildren().get(0).getKind();
+        // se conter BinaryExpr (conta aritmética sem operadores de comparação), é suposto dar erro
+        if (operatorUsed.equals("BinaryExpr")) {
+            valid = false;
+        }
+        // se for uma operação de comparação
+        else if (operatorUsed.equals("BinaryOp")) {
+            var operationNode = ifConditionNode.getChildren("BinaryOp").get(0);
+
+            // se possuir contas aritméticas
+            // analisa os tipos da comparação
+            //if (operationNode.)
+
+        }
+
         if (!valid) {
             // Create error report
             var message = String.format("Invalid if condition: '%s'");
@@ -71,20 +86,23 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
     private Void visitExpressions(JmmNode expressionNode, SymbolTable symbolTable) {
         boolean valid = true;
+        var methods = symbolTable.getMethods();
 
         // do tipo a.bar();
         // percorrer por todos os métodos e verificar se numa FunctionCall o método existe
-        if (!expressionNode.getChildren("FunctionCall").isEmpty()) {
-            var functionCall = expressionNode.getChildren("FunctionCall").get(0);
-            var functionCallName = functionCall.get("methodName");
-            boolean found = false;
-            for (var methodName : symbolTable.getMethods()) {
-                if (functionCallName.equals(methodName)) {
-                    found = true;
-                    break;
+        var functionCalls = expressionNode.getChildren("FunctionCall");
+        // se existir chamadas a funções
+        if (!functionCalls.isEmpty()) {
+            for (var functionCall : functionCalls) {
+                // verificar se o método chamado existe
+                for (var methodName : methods) {
+                    if (methodName.equals(functionCall.get("methodName"))) {
+                        valid = true;
+                        break;
+                    }
+                    valid = false;
                 }
             }
-            if (!found) valid = false;
         }
 
         if (!valid) {
