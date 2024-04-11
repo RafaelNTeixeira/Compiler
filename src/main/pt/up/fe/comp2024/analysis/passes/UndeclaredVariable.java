@@ -59,6 +59,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
         addVisit("Negate", this::visitNegate);
         addVisit("NewArray", this::visitNewArray);
         addVisit("BinaryExpr", this::visitBinaryExpr);
+        addVisit("BinaryOp", this::visitBinaryOp);
     }
     /*
     private Void example(JmmNode Node, SymbolTable symbolTable) {
@@ -79,6 +80,119 @@ public class UndeclaredVariable extends AnalysisVisitor {
         return null;
     }
     */
+
+    private Void visitBinaryOp(JmmNode binaryOpNode, SymbolTable symbolTable) {
+        boolean valid = true;
+
+        var varRefExpressions = binaryOpNode.getDescendants("VarRefExpr");
+        int countBoolConsts = 0;
+        int countIntConsts = binaryOpNode.getChildren("IntegerLiteral").size();
+
+        // contar valores booleanos numa VarRefExpr
+        for (var var : varRefExpressions) {
+            if (var.get("name").equals("true") || var.get("name").equals("false")) {
+                countBoolConsts++;
+            }
+            else {
+                // se forem variáveis locais
+                for (var locarVar : symbolTable.getLocalVariables(currentMethod)) {
+                    if (locarVar.getName().equals(var.get("name"))) {
+                        if (locarVar.getType().getName().equals("boolean")) {
+                            countBoolConsts++;
+                        }
+                    }
+                }
+                // se forem parametros
+                for (var param : symbolTable.getParameters(currentMethod)) {
+                    if (param.getName().equals(var.get("name"))) {
+                        if (param.getType().getName().equals("boolean")) {
+                            countBoolConsts++;
+                        }
+                    }
+                }
+            }
+        }
+
+        // contar valores inteiros numa VarRefExpr
+        for (var var : varRefExpressions) {
+            // se forem variáveis locais
+            for (var locarVar : symbolTable.getLocalVariables(currentMethod)) {
+                if (locarVar.getName().equals(var.get("name"))) {
+                    if (locarVar.getType().getName().equals("int")) {
+                        countIntConsts++;
+                    }
+                }
+            }
+            // se forem parametros
+            for (var param : symbolTable.getParameters(currentMethod)) {
+                if (param.getName().equals(var.get("name"))) {
+                    if (param.getType().getName().equals("int")) {
+                        countIntConsts++;
+                    }
+                }
+            }
+        }
+
+        if (countIntConsts > 0) {
+            // operador && não funciona com ints
+            if (binaryOpNode.get("op").equals("&&")) valid = false;
+        }
+
+        if (countBoolConsts > 0 && countIntConsts == 0) {
+            // operador < só funciona com ints
+            if (binaryOpNode.get("op").equals("<")) valid = false;
+        }
+
+        if ((countBoolConsts > 0 && countIntConsts > 0)) {
+            if (binaryOpNode.get("op").equals("<")) valid = false;
+            else if (binaryOpNode.get("op").equals("&&")) valid = false;
+        }
+
+        /*
+        // Se a operação for do tipo <, no caso de ter uma VarRefExpr e um IntegerLiteral, ver se VarRefExpr é do tipo int
+        if (binaryOpNode.get("op").equals("<")) {
+            if (varRefExpressions.size() == 1 && integerLiterals.size() == 1) {
+                if (valid) {
+                    // Como só é uma posso fazer get
+                    var varRefExpr = varRefExpressions.get(0);
+                    // ver se é variável local e do tipo int
+                    for (var locarVar : symbolTable.getLocalVariables(currentMethod)) {
+                        if (locarVar.getName().equals(varRefExpr.get("name"))) {
+                            if (!locarVar.getType().getName().equals("int")) {
+                                valid = false;
+                                break;
+                            }
+                        }
+                    }
+                    // ver se é parametro da função atual e do tipo int
+                    for (var param : symbolTable.getParameters(currentMethod)) {
+                        if (param.getName().equals(varRefExpr.get("name"))) {
+                            if (!param.getType().getName().equals("int")) {
+                                valid = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        */
+
+
+        if (!valid) {
+            // Create error report
+            var message = String.format("Invalid binary operation: '%s'");
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(binaryOpNode),
+                    NodeUtils.getColumn(binaryOpNode),
+                    message,
+                    null)
+            );
+        }
+
+        return null;
+    }
 
     private Void visitBinaryExpr(JmmNode binaryExprNode, SymbolTable symbolTable) {
         boolean valid = true;
@@ -111,7 +225,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         if (!valid) {
             // Create error report
-            var message = String.format("Invalid BinaryExpr (Not type int): '%s'");
+            var message = String.format("Invalid binary expression (Not type int): '%s'");
             addReport(Report.newError(
                     Stage.SEMANTIC,
                     NodeUtils.getLine(binaryExprNode),
