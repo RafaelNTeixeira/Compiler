@@ -351,6 +351,7 @@ public class JasminGenerator {
         if (callInstruction.getReturnType().getTypeOfElement().name() == "OBJECTREF") {
             var className = ollirResult.getOllirClass().getClassName();
             code.append("new ").append(className).append(NL);
+            code.append("dup").append(NL);
         }
 
         return code.toString();
