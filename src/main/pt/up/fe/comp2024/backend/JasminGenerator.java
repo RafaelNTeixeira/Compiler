@@ -32,6 +32,8 @@ public class JasminGenerator {
     Method currentMethod;
 
     Field currentField;
+
+    ClassUnit currentClassUnit;
     private final FunctionClassMap<TreeNode, String> generators;
 
     public JasminGenerator(OllirResult ollirResult) {
@@ -46,7 +48,9 @@ public class JasminGenerator {
         generators.put(Method.class, this::generateMethod);
         generators.put(Field.class, this::generateField);
         generators.put(AssignInstruction.class, this::generateAssign);
-        //generators.put(CallInstruction.class, this::generateCall);
+        generators.put(PutFieldInstruction.class, this::generatePutField);
+        generators.put(GetFieldInstruction.class, this::generateGetField);
+        generators.put(CallInstruction.class, this::generateCall);
         generators.put(SingleOpInstruction.class, this::generateSingleOp);
         generators.put(LiteralElement.class, this::generateLiteral);
         generators.put(Operand.class, this::generateOperand);
@@ -72,6 +76,7 @@ public class JasminGenerator {
     private String generateClassUnit(ClassUnit classUnit) {
 
         var code = new StringBuilder();
+        currentClassUnit = classUnit;
 
         // generate class name
         var className = ollirResult.getOllirClass().getClassName();
@@ -90,15 +95,26 @@ public class JasminGenerator {
         code.append(NL);
 
         // generate a single constructor method
-        var defaultConstructor = """
+        var initDefaultConstructor = """
                 ;default constructor
                 .method public <init>()V
                     aload_0
-                    invokespecial java/lang/Object/<init>()V
+                    """;
+
+        var endDefaultConstructor ="""
                     return
                 .end method
                 """;
-        code.append(defaultConstructor);
+        code.append(initDefaultConstructor);
+        code.append(TAB).append(" ").append("invokespecial ");
+        if (ollirResult.getOllirClass().getSuperClass() != null) {
+            var superName = ollirResult.getOllirClass().getSuperClass();
+            code.append(superName);
+        } else {
+            code.append("java/lang/Object");
+        }
+        code.append("/<init>()V").append(NL);
+        code.append(endDefaultConstructor);
 
         // generate code for all other methods
         for (var method : ollirResult.getOllirClass().getMethods()) {
@@ -112,7 +128,7 @@ public class JasminGenerator {
 
             code.append(generators.apply(method));
         }
-
+        currentClassUnit = null;
         return code.toString();
     }
 
@@ -257,24 +273,88 @@ public class JasminGenerator {
         return code.toString();
     }
 
-    /*
+    private String generatePutField(PutFieldInstruction putFieldInstruction) {
+        var code = new StringBuilder();
+        var type = getJasminType(putFieldInstruction.getValue().getType());
+        var spec1 = this.currentClassUnit.getClassName();
+        var spec2 = putFieldInstruction.getField().getName().toLowerCase();
+
+        var object = putFieldInstruction.getObject();
+        code.append(generators.apply(object));
+
+        var value = putFieldInstruction.getValue();
+        code.append(generators.apply(value));
+
+        code.append("putfield ").append(spec1).append("/").append(spec2).append(" ").append(type).append(NL);
+        return code.toString();
+    }
+
+    private String generateGetField(GetFieldInstruction getFieldInstruction) {
+        var code = new StringBuilder();
+
+        var type = getJasminType(getFieldInstruction.getFieldType());
+        var spec1 = this.currentClassUnit.getClassName();
+        var spec2 = getFieldInstruction.getField().getName().toLowerCase();
+
+        var object = getFieldInstruction.getObject();
+        code.append(generators.apply(object));
+
+        code.append("getfield ").append(spec1).append("/").append(spec2).append(" ").append(type).append(NL);
+        return code.toString();
+    }
+
+
     private String generateCall(CallInstruction callInstruction){
         String code;
-
         code = switch (callInstruction.getInvocationType()) {
             case invokevirtual -> null;
             case invokeinterface -> null;
-            case invokespecial -> null;
-
+            case invokespecial -> getSpecialCall(callInstruction);
             case invokestatic -> null;
-            case NEW -> null;
+            case NEW -> getNewCall(callInstruction);
             case arraylength -> null;
             case ldc -> null;
         };
 
         return code;
     }
-    */
+
+    private String getSpecialCall(CallInstruction callInstruction) {
+        var code = new StringBuilder();
+        for (var agr : callInstruction.getArguments()){
+            code.append(generators.apply(agr));
+        }
+
+        code.append("invokespecial ");
+        var className = ollirResult.getOllirClass().getClassName();
+        //code.append(className).append("/");
+        if (callInstruction.getArguments().isEmpty()
+                || callInstruction.getArguments().get(0).getType().getTypeOfElement().equals(ElementType.THIS)){
+            code.append(className);
+        } // else é ir buscar aos imports (a fazer depois)!
+        code.append("/<init>(");
+        for (var agr :callInstruction.getArguments()){
+            code.append(generators.apply(agr));
+        }
+        code.append(")");
+        var retType = getJasminType(callInstruction.getReturnType());
+        code.append(retType).append(NL);
+
+        return code.toString();
+    }
+
+    private String getNewCall(CallInstruction callInstruction) {
+        var code = new StringBuilder();
+        for (var agr : callInstruction.getArguments()){
+            code.append(generators.apply(agr));
+        }
+        if (callInstruction.getReturnType().getTypeOfElement().name() == "OBJECTREF") {
+            var className = ollirResult.getOllirClass().getClassName();
+            code.append("new ").append(className).append(NL);
+        }
+
+        return code.toString();
+    }
 
     private String generateSingleOp(SingleOpInstruction singleOp) {
         return generators.apply(singleOp.getSingleOperand());
@@ -287,7 +367,19 @@ public class JasminGenerator {
     private String generateOperand(Operand operand) {
         // get register
         var reg = currentMethod.getVarTable().get(operand.getName()).getVirtualReg();
-        return "iload " + reg + NL;
+
+        switch (operand.getType().getTypeOfElement().name()) {
+            case "INT32", "BOOLEAN" -> {
+                return "iload " + reg + NL;
+            }
+            case "ARRAYREF", "OBJECTREF", "CLASS", "STRING" -> {
+                return "aload " + reg + NL;
+            }
+            case "THIS" -> {
+                return "aload_0" + NL;
+            }
+        }
+        return "";
     }
 
     private String generateBinaryOp(BinaryOpInstruction binaryOp) {
@@ -301,6 +393,8 @@ public class JasminGenerator {
         var op = switch (binaryOp.getOperation().getOpType()) {
             case ADD -> "iadd";
             case MUL -> "imul";
+            case DIV -> "idiv";
+            case SUB -> "isub";
             default -> throw new NotImplementedException(binaryOp.getOperation().getOpType());
         };
 
