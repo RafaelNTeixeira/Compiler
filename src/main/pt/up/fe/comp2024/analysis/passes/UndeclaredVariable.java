@@ -54,6 +54,9 @@ public class UndeclaredVariable extends AnalysisVisitor {
         addVisit("Expression", this::visitExpression);
         addVisit("ArrayAccess", this::visitArrayAccess);
         addVisit("Length", this::visitLength);
+        addVisit("IntegerLiteral", this::visitIntegerLiteral);
+        addVisit("Bolean", this::visitBolean);
+        addVisit("Negate", this::visitNegate);
     }
     /*
     private Void example(JmmNode Node, SymbolTable symbolTable) {
@@ -74,6 +77,71 @@ public class UndeclaredVariable extends AnalysisVisitor {
         return null;
     }
     */
+
+    private Void visitNegate(JmmNode negateNode, SymbolTable symbolTable) {
+        boolean valid = true;
+
+        // Negate só pode ser utilizado em Booleanos
+        // se for uma variável negada ou booleano negado
+        if (negateNode.getChildren().get(0).getKind().equals("VarRefExpr")) {
+            var negatedVar = negateNode.getChildren().get(0);
+            boolean isConstTrueOrFalse = false;
+            // verificar se é constante true ou false
+            if (negatedVar.get("name").equals("true") || negatedVar.get("name").equals("false")) {
+                isConstTrueOrFalse = true;
+            }
+            // se é constante true ou false, já é validado. Se não for...
+            if (!isConstTrueOrFalse) {
+                // verificar se é variável local
+                if (symbolTable.getLocalVariables(currentMethod) != null) {
+                    for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                        if (localVar.getName().equals(negatedVar.get("name"))) {
+                            if (!localVar.getType().getName().equals("boolean")) {
+                                valid = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // verificar se é parametro
+                if (symbolTable.getParameters(currentMethod) != null) {
+                    for (var param : symbolTable.getParameters(currentMethod)) {
+                        if (param.getName().equals(negatedVar.get("name"))) {
+                            if (!param.getType().getName().equals("boolean")) {
+                                valid = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!valid) {
+            // Create error report
+            var message = String.format("Invalid negation: '%s'");
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(negateNode),
+                    NodeUtils.getColumn(negateNode),
+                    message,
+                    null)
+            );
+        }
+
+        return null;
+    }
+
+    private Void visitBolean(JmmNode boleanNode, SymbolTable symbolTable) {
+        boleanNode.put("type", "boolean");
+        return null;
+    }
+
+    private Void visitIntegerLiteral(JmmNode integerLiteralNode, SymbolTable symbolTable) {
+        integerLiteralNode.put("type", "int");
+        return null;
+    }
 
     private Void visitLength(JmmNode lengthNode, SymbolTable symbolTable) {
         boolean valid = true;
@@ -137,7 +205,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
                     }
                 }
             }
-
         }
 
         if (!valid) {
