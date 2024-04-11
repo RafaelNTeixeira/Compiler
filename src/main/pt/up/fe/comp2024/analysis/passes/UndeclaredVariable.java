@@ -57,6 +57,8 @@ public class UndeclaredVariable extends AnalysisVisitor {
         addVisit("IntegerLiteral", this::visitIntegerLiteral);
         addVisit("Bolean", this::visitBolean);
         addVisit("Negate", this::visitNegate);
+        addVisit("NewArray", this::visitNewArray);
+        addVisit("BinaryExpr", this::visitBinaryExpr);
     }
     /*
     private Void example(JmmNode Node, SymbolTable symbolTable) {
@@ -77,6 +79,73 @@ public class UndeclaredVariable extends AnalysisVisitor {
         return null;
     }
     */
+
+    private Void visitBinaryExpr(JmmNode binaryExprNode, SymbolTable symbolTable) {
+        boolean valid = true;
+
+        var allVariables = binaryExprNode.getDescendants("VarRefExpr");
+
+        // Se for uma operação aritmética entre variáveis, verificar se são do tipo int
+        for (var variable : allVariables) {
+            // verificar se é variável local
+            for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                if (localVar.getName().equals(variable.get("name"))) {
+                    // varExpr só podem ter elementos inteiros, não booleanos
+                    if (!localVar.getType().getName().equals("int")) {
+                        valid = false;
+                        break;
+                    }
+                }
+            }
+            // verificar se é parametro da função atual
+            for (var param : symbolTable.getParameters(currentMethod)) {
+                if (param.getName().equals(variable.get("name"))) {
+                    // varExpr só podem ter elementos inteiros, não booleanos
+                    if (!param.getType().getName().equals("int")) {
+                        valid = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!valid) {
+            // Create error report
+            var message = String.format("Invalid BinaryExpr (Not type int): '%s'");
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(binaryExprNode),
+                    NodeUtils.getColumn(binaryExprNode),
+                    message,
+                    null)
+            );
+        }
+
+        return null;
+    }
+
+    private Void visitNewArray(JmmNode newArrayNode, SymbolTable symbolTable) {
+        boolean valid = true;
+
+        // Verificar se for dado um valor dentro de [], como em new int[2], só é dado 1 valor e do tipo int
+        if (newArrayNode.getChildren("IntegerLiteral").size() > 1 || newArrayNode.getChildren("IntegerLiteral").isEmpty()) {
+            valid = false;
+        }
+
+        if (!valid) {
+            // Create error report
+            var message = String.format("Invalid new array construction: '%s'");
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(newArrayNode),
+                    NodeUtils.getColumn(newArrayNode),
+                    message,
+                    null)
+            );
+        }
+
+        return null;
+    }
 
     private Void visitNegate(JmmNode negateNode, SymbolTable symbolTable) {
         boolean valid = true;
