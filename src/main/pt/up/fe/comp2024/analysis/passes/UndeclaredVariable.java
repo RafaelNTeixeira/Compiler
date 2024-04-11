@@ -148,37 +148,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
             else if (binaryOpNode.get("op").equals("&&")) valid = false;
         }
 
-        /*
-        // Se a operação for do tipo <, no caso de ter uma VarRefExpr e um IntegerLiteral, ver se VarRefExpr é do tipo int
-        if (binaryOpNode.get("op").equals("<")) {
-            if (varRefExpressions.size() == 1 && integerLiterals.size() == 1) {
-                if (valid) {
-                    // Como só é uma posso fazer get
-                    var varRefExpr = varRefExpressions.get(0);
-                    // ver se é variável local e do tipo int
-                    for (var locarVar : symbolTable.getLocalVariables(currentMethod)) {
-                        if (locarVar.getName().equals(varRefExpr.get("name"))) {
-                            if (!locarVar.getType().getName().equals("int")) {
-                                valid = false;
-                                break;
-                            }
-                        }
-                    }
-                    // ver se é parametro da função atual e do tipo int
-                    for (var param : symbolTable.getParameters(currentMethod)) {
-                        if (param.getName().equals(varRefExpr.get("name"))) {
-                            if (!param.getType().getName().equals("int")) {
-                                valid = false;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        */
-
-
         if (!valid) {
             // Create error report
             var message = String.format("Invalid binary operation: '%s'");
