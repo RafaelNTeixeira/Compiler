@@ -774,11 +774,19 @@ public class UndeclaredVariable extends AnalysisVisitor {
                 }
             }
         }
-        // assign a uma variável (Ex: varLeft = varRight)
+        // assign a uma variável (Ex: varLeft = varRight) ou constante booleana (varLeft = constant)
         else if (assignElements.get(1).getKind().equals("VarRefExpr")) {
             // pesquisa-se pela variável que recebe o valor
             for (var varLeft : localsVar) {
                 if (assignElements.get(0).get("name").equals(varLeft.getName())) {
+                    // se for constante booleana
+                    if (assignElements.get(1).get("name").equals("true") || assignElements.get(1).get("name").equals("false")) {
+                        if (!varLeft.getType().getName().equals("boolean")) {
+                            valid = false;
+                            break;
+                        }
+                    }
+
                     // pesquisa-se pela variável que dá o valor
                     for (var varRight : localsVar) {
                         if (assignElements.get(1).get("name").equals(varRight.getName())) {
@@ -803,7 +811,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
                 }
             }
         }
-
 
         if (!valid) {
             // Create error report
@@ -952,7 +959,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
                             valid = false;
                             break;
                         }
-                        //if (paramsExpected)
                     }
                 }
             }
