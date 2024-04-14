@@ -70,7 +70,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         if (!valid) {
             // Create error report
-            var message = String.format("Invalid: '%s'");
+            var message = String.format("Invalid: '%s'", Node);
             addReport(Report.newError(
                     Stage.SEMANTIC,
                     NodeUtils.getLine(Node),
@@ -163,7 +163,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         if (!valid) {
             // Create error report
-            var message = String.format("Invalid binary operation: '%s'");
+            var message = String.format("Invalid binary operation: '%s'", binaryOpNode);
             addReport(Report.newError(
                     Stage.SEMANTIC,
                     NodeUtils.getLine(binaryOpNode),
@@ -209,7 +209,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         if (!valid) {
             // Create error report
-            var message = String.format("Invalid binary expression (Not type int): '%s'");
+            var message = String.format("Invalid binary expression (Not type int): '%s'", binaryExprNode);
             addReport(Report.newError(
                     Stage.SEMANTIC,
                     NodeUtils.getLine(binaryExprNode),
@@ -232,7 +232,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         if (!valid) {
             // Create error report
-            var message = String.format("Invalid new array construction: '%s'");
+            var message = String.format("Invalid new array construction: '%s'", newArrayNode);
             addReport(Report.newError(
                     Stage.SEMANTIC,
                     NodeUtils.getLine(newArrayNode),
@@ -287,7 +287,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         if (!valid) {
             // Create error report
-            var message = String.format("Invalid negation: '%s'");
+            var message = String.format("Invalid negation: '%s'", negateNode);
             addReport(Report.newError(
                     Stage.SEMANTIC,
                     NodeUtils.getLine(negateNode),
@@ -336,7 +336,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         if (!valid) {
             // Create error report
-            var message = String.format("Invalid length function call: '%s'");
+            var message = String.format("Invalid length function call: '%s'", lengthNode);
             addReport(Report.newError(
                     Stage.SEMANTIC,
                     NodeUtils.getLine(lengthNode),
@@ -376,7 +376,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         if (!valid) {
             // Create error report
-            var message = String.format("Invalid array access: '%s'");
+            var message = String.format("Invalid array access: '%s'", arrayAccessNode);
             addReport(Report.newError(
                     Stage.SEMANTIC,
                     NodeUtils.getLine(arrayAccessNode),
@@ -385,7 +385,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
                     null)
             );
         }
-
         return null;
     }
 
@@ -454,7 +453,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         if (!valid) {
             // Create error report
-            var message = String.format("Invalid expression: '%s'");
+            var message = String.format("Invalid expression: '%s'", expressionNode);
             addReport(Report.newError(
                     Stage.SEMANTIC,
                     NodeUtils.getLine(expressionNode),
@@ -490,7 +489,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         if (!valid) {
             // Create error report
-            var message = String.format("Invalid New Class: '%s'");
+            var message = String.format("Invalid New Class: '%s'", newClassNode);
             addReport(Report.newError(
                     Stage.SEMANTIC,
                     NodeUtils.getLine(newClassNode),
@@ -541,7 +540,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         if (!valid) {
             // Create error report
-            var message = String.format("Invalid new array creation: '%s'");
+            var message = String.format("Invalid new array creation: '%s'", arrayInitNode);
             addReport(Report.newError(
                     Stage.SEMANTIC,
                     NodeUtils.getLine(arrayInitNode),
@@ -552,6 +551,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
         }
         else {
             arrayInitNode.put("type", type);
+            arrayInitNode.put("isArray", "true");
         }
 
         return null;
@@ -582,7 +582,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         if (!valid) {
             // Create error report
-            var message = String.format("Invalid while condition: '%s'");
+            var message = String.format("Invalid while condition: '%s'", whileNode);
             addReport(Report.newError(
                     Stage.SEMANTIC,
                     NodeUtils.getLine(whileNode),
@@ -597,8 +597,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
     private Void visitIfConditions(JmmNode ifConditionNode, SymbolTable symbolTable) {
         boolean valid = true;
-        boolean diffOperationInsideIf = false;
-        boolean diffTypesInsideIf = false;
         int binaryExprCounter = 0;
         int binaryOpCounter = 0;
 
@@ -624,7 +622,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         if (!valid) {
             // Create error report
-            var message = String.format("Invalid if condition: '%s'");
+            var message = String.format("Invalid if condition: '%s'", ifConditionNode);
             addReport(Report.newError(
                     Stage.SEMANTIC,
                     NodeUtils.getLine(ifConditionNode),
@@ -653,7 +651,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         if (!valid) {
             // Create error report
-            var message = String.format("Call to non existent method: '%s'");
+            var message = String.format("Call to non existent method: '%s'", functionCallNode);
             addReport(Report.newError(
                     Stage.SEMANTIC,
                     NodeUtils.getLine(functionCallNode),
@@ -721,6 +719,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
             if (localVar.getName().equals(assignElements.get(0).get("name"))) {
                 // Se for do tipo array só pode dar assign a elementos do tipo array
                 if (localVar.getType().isArray()) {
+                    assignStatm.put("isArray", "true");
                     // Testar para quando o assign é feito com uma chamada a uma função que retorna um array
                     if (assignElements.get(1).getKind().equals("FunctionCall")) {
                         var functionCallReturn = symbolTable.getReturnType(assignElements.get(1).get("methodName"));
@@ -736,12 +735,14 @@ public class UndeclaredVariable extends AnalysisVisitor {
                             valid = false;
                             break;
                         }
+                        assignStatm.put("type", retType);
                     }
                     // Testar para quando o assign é feito com um array
                     else if (!assignElements.get(1).getKind().equals("ArrayInit") && !assignElements.get(1).getKind().equals("NewArray")) {
                         valid = false;
                         break;
                     }
+                    assignStatm.put("type", localVar.getType().getName());
                 }
                 // Se não for do tipo array, não pode dar assign a elementos do tipo array
                 else {
@@ -758,6 +759,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
                             break;
                         }
                     }
+                    assignStatm.put("type", localVar.getType().getName());
                 }
             }
         }
@@ -770,7 +772,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
                     if (!expectedValueType.equals("int")) {
                         valid = false;
                     }
-
                 }
             }
         }
@@ -885,7 +886,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
             }
         }
 
-
         // se o return for uma chamada a uma função. Verificar se o valor recebido é o tipo especificado da função atual
         JmmNode calledFunction = null;
         JmmNode currentFunction = null;
@@ -956,6 +956,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
                         }
 
                         if (!varUsed.getType().getName().equals(paramsExpected.get(i).get("type"))) {
+                            returnStatm.put("type", paramsExpected.get(i).get("type"));
                             valid = false;
                             break;
                         }
@@ -974,8 +975,10 @@ public class UndeclaredVariable extends AnalysisVisitor {
                             // verifica se é variável local da função
                             if (localVar.getName().equals(returnElement.get("name"))) {
                                 // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
-                                if (!localVar.getType().getName().equals("int") || localVar.getType().isArray())
+                                if (!localVar.getType().getName().equals("int") || localVar.getType().isArray()) {
+                                    returnStatm.put("type", "int");
                                     valid = false;
+                                }
                             }
                         }
                     }
@@ -1039,11 +1042,23 @@ public class UndeclaredVariable extends AnalysisVisitor {
         boolean valid = true;
         var returnType = table.getReturnType(currentMethod);
 
+
         List<Symbol> localsList = table.getLocalVariables(currentMethod);
         Pair<String, List<Symbol>> pairLocals = new Pair<>(currentMethod, localsList);
         allLocalVariables.add(pairLocals);
 
         methods.add(method);
+        if (method.get("methodName").equals("main")) {
+            method.put("type", "main");
+        }
+        else if (method.getChildren().get(0).getKind().equals("Array")) {
+            var nodeArray = method.getChildren().get(0);
+            method.put("type", nodeArray.getChildren().get(0).get("value"));
+            method.put("isArray", "true");
+        }
+        else {
+            method.put("type", method.getChildren().get(0).get("value"));
+        }
 
        var methodChildren = method.getChildren();
        var assignments = method.getChildren("AssignStmt");
@@ -1133,6 +1148,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
                                     }
                                 }
                             }
+                            method.put("isVarArgs", "true");
                         }
                     }
                 }
@@ -1192,6 +1208,9 @@ public class UndeclaredVariable extends AnalysisVisitor {
                 varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
             }
             else if (varDecl.getChildren().get(0).getKind().equals("Var")) {
+                varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+            }
+            else {
                 varDecl.put("type", varDecl.getChildren().get(0).get("value"));
             }
             return null;
