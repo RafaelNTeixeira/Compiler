@@ -111,7 +111,7 @@ stmt
     | expr EQUALS expr SEMI #AssignStmt //
     | ID EQUALS expr SEMI #AssignVar //
     | RETURN expr SEMI #ReturnStmt //
-    | ID EQUALS LSQUARE expr RSQUARE EQUALS expr SEMI #AssignArray //
+    | ID EQUALS LSQUARE expr RSQUARE EQUALS expr SEMI #AssignArray // isto é para quê???
     ;
 
 expr
