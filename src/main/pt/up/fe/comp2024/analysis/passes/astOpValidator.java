@@ -428,13 +428,16 @@ public class astOpValidator extends AnalysisVisitor {
                     valid = true;
                     break;
                 }
-                // Verificar se a variável que chama o método tem o tipo da classe que extende uma superclasse
+                // Verificar se a variável que chama o método tem o tipo da classe que extende uma superclasse, sendo esta importada
                 else if (localVarTypeThatCalledFunction.equals(symbolTable.getClassName())) {
-                    if (importName.equals(symbolTable.getSuper())) {
-                        cameFromImport = true;
-                        valid = true;
-                        break;
+                    if (!symbolTable.getSuper().isEmpty()) {
+                        if (importName.equals(symbolTable.getSuper())) {
+                            cameFromImport = true;
+                            valid = true;
+                            break;
+                        }
                     }
+
                 }
             }
 
@@ -1020,15 +1023,15 @@ public class astOpValidator extends AnalysisVisitor {
         // Check if var in return exists
         else {
             for (var returnElement : returnTypes) {
-                if (symbolTable.getParameters(currentMethod).stream()
+                if (symbolTable.getParameters(currentMethod) != null && symbolTable.getParameters(currentMethod).stream()
                         .anyMatch(param -> param.getName().equals(returnElement.get(1)))) {
                     returnTypes.clear();
                     return null;
-                } else if (symbolTable.getLocalVariables(currentMethod).stream()
+                } else if (symbolTable.getLocalVariables(currentMethod) != null && symbolTable.getLocalVariables(currentMethod).stream()
                         .anyMatch(local -> local.getName().equals(returnElement.get(1)))) {
                     returnTypes.clear();
                     return null;
-                } else if (symbolTable.getImports().stream()
+                } else if (symbolTable.getImports() != null && symbolTable.getImports().stream()
                         .anyMatch(imp -> imp.equals(returnElement.get(1)))) {
                     returnTypes.clear();
                     return null;
