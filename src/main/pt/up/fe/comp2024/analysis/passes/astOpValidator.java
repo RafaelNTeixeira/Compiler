@@ -1031,6 +1031,7 @@ public class astOpValidator extends AnalysisVisitor {
             for (var returnElement : returnElements) {
                 // só é preciso analisar variáveis int. Ignora os operadores.
                 if (!returnElement.getKind().equals("BinaryExpr")) {
+                    if (returnElement.getKind().equals("IntegerLiteral")) continue;
                     // caso a variável no return esteja nas variáveis locais
                     if (localVariables != null) {
                         for (var localVar : localVariables) {
@@ -1038,8 +1039,40 @@ public class astOpValidator extends AnalysisVisitor {
                             if (localVar.getName().equals(returnElement.get("name"))) {
                                 // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
                                 if (!localVar.getType().getName().equals("int") || localVar.getType().isArray()) {
-                                    returnStatm.put("type", "int");
                                     valid = false;
+                                }
+                                else returnStatm.put("type", "int");
+                            }
+                        }
+                    }
+                    // caso esteja nos fields
+                    if (valid) {
+                        if (symbolTable.getFields() != null) {
+                            for (var field : symbolTable.getFields()) {
+                                // verifica se é field da classe
+                                if (field.getName().equals(returnElement.get("name"))) {
+                                    // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
+                                    if (!field.getType().getName().equals("int") || field.getType().isArray()) {
+                                        returnStatm.put("type", "int");
+                                        valid = false;
+                                    }
+                                    else returnStatm.put("type", "int");
+                                }
+                            }
+                        }
+                    }
+                    // caso esteja nos parametros da função atual
+                    if (valid) {
+                        if (symbolTable.getParameters(currentMethod) != null) {
+                            for (var param : symbolTable.getParameters(currentMethod)) {
+                                // verifica se é parametro da função atual
+                                if (param.getName().equals(returnElement.get("name"))) {
+                                    // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
+                                    if (!param.getType().getName().equals("int") || param.getType().isArray()) {
+                                        returnStatm.put("type", "int");
+                                        valid = false;
+                                    }
+                                    else returnStatm.put("type", "int");
                                 }
                             }
                         }
