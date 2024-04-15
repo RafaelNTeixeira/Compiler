@@ -715,6 +715,7 @@ public class astOpValidator extends AnalysisVisitor {
         var importNames = symbolTable.getImports();
 
         boolean valid = true;
+        boolean found = false;
 
         // Lidar com arrays
         for (var localVar : localsVar) {
@@ -830,6 +831,48 @@ public class astOpValidator extends AnalysisVisitor {
                     }
                 }
             }
+        }
+        // se for uma chamada a uma função verifica se o elemento que chama a função existe
+        else if (assignElements.get(1).getKind().equals("FunctionCall")) {
+            var varThatCalledFunction = assignElements.get(1).getChildren().get(0);
+            // se não for do tipo this, verifica-se se a variável existe no ficheiro
+            if (!varThatCalledFunction.get("name").equals("this")) {
+                // verificar se variável que chamou a função existe na classe ou nos imports
+                for (var importName : symbolTable.getImports()) {
+                    if (importName.equals(varThatCalledFunction.get("name"))) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                        if (localVar.getName().equals(varThatCalledFunction.get("name"))) {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if (!found) {
+                    for (var param : symbolTable.getParameters(currentMethod)) {
+                        if (param.getName().equals(varThatCalledFunction.get("name"))) {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            // se for o caso do this, temos de verificar se a função chamada existe na classe
+            else {
+                if (symbolTable.getMethods() != null) {
+                    for (var methodName : symbolTable.getMethods()) {
+                        if (methodName.equals(assignElements.get(1).get("methodName"))) {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!found) valid = false;
         }
 
         if (!valid) {
