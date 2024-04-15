@@ -20,7 +20,7 @@ import java.util.List;
  *
  * @author JBispo
  */
-public class UndeclaredVariable extends AnalysisVisitor {
+public class astOpValidator extends AnalysisVisitor {
 
     private String currentMethod;
 
@@ -804,6 +804,22 @@ public class UndeclaredVariable extends AnalysisVisitor {
                                             }
                                         }
 
+                                    }
+                                }
+                                else {
+                                    // verificar se ambas as variáveis provêm de imports
+                                    var foundImportLeft = false;
+                                    var foundImportRight = false;
+                                    if (symbolTable.getImports() != null) {
+                                        for (var importName : symbolTable.getImports()) {
+                                            if (varLeft.getType().getName().equals(importName)) foundImportLeft = true;
+                                            else if (varRight.getType().getName().equals(importName)) foundImportRight = true;
+                                            if (foundImportLeft && foundImportRight) break;
+                                        }
+                                    }
+                                    if ((foundImportLeft && !foundImportRight) || (!foundImportLeft && foundImportRight)) {
+                                        valid = false;
+                                        break;
                                     }
                                 }
                             }
