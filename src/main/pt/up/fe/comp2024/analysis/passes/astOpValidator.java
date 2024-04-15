@@ -410,7 +410,6 @@ public class astOpValidator extends AnalysisVisitor {
                     break;
                 }
             }
-            if (localVarFound) valid = false;
 
             // Verificar se a variável que chama o método existe nos parâmetros
             for (var param : symbolTable.getParameters(currentMethod)) {
@@ -419,7 +418,8 @@ public class astOpValidator extends AnalysisVisitor {
                     break;
                 }
             }
-            if (paramFound) valid = false;
+
+            if (!localVarFound && !paramFound) valid = false;
 
             for (var importName : symbolTable.getImports()) {
                 // Verificar se a variável que chama o método tem um tipo importado
