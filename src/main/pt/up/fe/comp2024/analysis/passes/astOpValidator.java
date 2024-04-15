@@ -1049,17 +1049,106 @@ public class astOpValidator extends AnalysisVisitor {
         }
         // se o return for um acesso a um array
         else if (returnElements.get(0).getKind().equals("ArrayAccess")) {
-            for (var child : returnElements.get(0).getChildren()) {
-                // se encontrar a variável, queremos verificar se é do tipo array
-                if (child.getKind().equals("VarRefExpr")) {
-                    if (localVariables != null && !localVariables.isEmpty()) {
-                        for (var localVar : localVariables) {
-                            // se não for array, dá erro
-                            if (!localVar.getType().isArray()) {
-                                valid = false;
+            // verificar se existe varArgs
+            boolean varArgsExists = false;
+            for (var method : methods) {
+                if (method.get("methodName").equals(currentMethod)) {
+                    // se tiver parametros
+                    if (!method.getChildren("Param").isEmpty()) {
+                        for (var param : method.getChildren("Param")) {
+                            if (!param.getChildren("VarArgs").isEmpty()) {
+                                varArgsExists = true;
+                                break;
                             }
                         }
                     }
+                }
+            }
+
+            var arrayVar = returnElements.get(1);
+            Symbol arrayVarSymbol = null;
+            Symbol arrayIndexSymbol = null;
+            var arrayIndex = returnElements.get(2);
+            boolean foundArrayDecl = false;
+            boolean foundArrayIndex = false;
+
+            // verificar se existe o arrayVar no ficheiro
+            if (symbolTable.getLocalVariables(currentMethod) != null) {
+                for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                    if (localVar.getName().equals(arrayVar.get("name"))) {
+                        foundArrayDecl = true;
+                        arrayVarSymbol = localVar;
+                    }
+                }
+            }
+            // se for varargs, é como se fosse array
+            if (!foundArrayDecl) {
+                if (symbolTable.getParameters(currentMethod) != null) {
+                    for (var param : symbolTable.getParameters(currentMethod)) {
+                        if (param.getName().equals(arrayVar.get("name"))) {
+                            foundArrayDecl = true;
+                            arrayVarSymbol = param;
+                        }
+                    }
+                }
+            }
+            // se for varargs, é como se fosse array
+            if (!foundArrayDecl) {
+                if (symbolTable.getFields() != null) {
+                    for (var field : symbolTable.getFields()) {
+                        if (field.getName().equals(arrayVar.get("name"))) {
+                            foundArrayDecl = true;
+                            arrayVarSymbol = field;
+                        }
+                    }
+                }
+            }
+            if (!foundArrayDecl && !varArgsExists) valid = false;
+
+            // se array está declarado, verificar se tem tem o tipo correto
+            if (foundArrayDecl) {
+                // se não for do tipo array, falha
+                if (!arrayVarSymbol.getType().isArray() && !varArgsExists) {
+                    valid = false;
+                }
+            }
+
+            // procuramos o valor do tipo dado dentro de []
+            if (valid) {
+                // se for uma variável
+                if (arrayIndex.getKind().equals("VarRefExpr")) {
+                    // verificar se existe a variável index no ficheiro
+                    if (symbolTable.getLocalVariables(currentMethod) != null) {
+                        for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                            if (localVar.getName().equals(arrayIndex.get("name"))) {
+                                foundArrayIndex = true;
+                                arrayIndexSymbol = localVar;
+                            }
+                        }
+                    }
+                    if (!foundArrayIndex) {
+                        if (symbolTable.getParameters(currentMethod) != null) {
+                            for (var param : symbolTable.getParameters(currentMethod)) {
+                                if (param.getName().equals(arrayIndex.get("name"))) {
+                                    foundArrayIndex = true;
+                                    arrayIndexSymbol = param;
+                                }
+                            }
+                        }
+                    }
+                    if (!foundArrayIndex) {
+                        if (symbolTable.getFields() != null) {
+                            for (var field : symbolTable.getFields()) {
+                                if (field.getName().equals(arrayIndex.get("name"))) {
+                                    foundArrayIndex = true;
+                                    arrayIndexSymbol = field;
+                                }
+                            }
+                        }
+                    }
+                    if (!foundArrayIndex) valid = false;
+                    if (arrayIndexSymbol.getType().isArray()) valid = false;
+                    if (!arrayIndexSymbol.getType().getName().equals("int")) valid = false;
                 }
             }
         }
@@ -1076,6 +1165,11 @@ public class astOpValidator extends AnalysisVisitor {
                     return null;
                 } else if (symbolTable.getImports() != null && symbolTable.getImports().stream()
                         .anyMatch(imp -> imp.equals(returnElement.get(1)))) {
+                    returnTypes.clear();
+                    return null;
+                }
+                else if (symbolTable.getFields() != null && symbolTable.getFields().stream()
+                        .anyMatch(field -> field.getName().equals(returnElement.get(1)))) {
                     returnTypes.clear();
                     return null;
                 }
@@ -1232,8 +1326,6 @@ public class astOpValidator extends AnalysisVisitor {
     }
 
     private Void visitVarDecl(JmmNode varDecl, SymbolTable table) {
-        SpecsCheck.checkNotNull(currentMethod, () -> "Expected current method to be set");
-
         // Check if exists a parameter or variable declaration with the same name as the variable reference
         var varRefName = varDecl.get("name");
 
