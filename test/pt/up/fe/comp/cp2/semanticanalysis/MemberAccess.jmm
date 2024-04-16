@@ -1,0 +1,13 @@
+class MemberAccess {
+
+    public int foo() {
+        int[] a;
+        a = [1, 2, 3];
+
+        return a.length;
+    }
+
+    public static void main(String[] args) {
+
+    }
+}

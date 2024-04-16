@@ -108,18 +108,22 @@ public class astOpValidator extends AnalysisVisitor {
             }
             else {
                 // se forem variáveis locais
-                for (var locarVar : symbolTable.getLocalVariables(currentMethod)) {
-                    if (locarVar.getName().equals(var.get("name"))) {
-                        if (locarVar.getType().getName().equals("boolean")) {
-                            countBoolConsts++;
+                if (symbolTable.getLocalVariables(currentMethod) != null) {
+                    for (var locarVar : symbolTable.getLocalVariables(currentMethod)) {
+                        if (locarVar.getName().equals(var.get("name"))) {
+                            if (locarVar.getType().getName().equals("boolean")) {
+                                countBoolConsts++;
+                            }
                         }
                     }
                 }
                 // se forem parametros
-                for (var param : symbolTable.getParameters(currentMethod)) {
-                    if (param.getName().equals(var.get("name"))) {
-                        if (param.getType().getName().equals("boolean")) {
-                            countBoolConsts++;
+                if (symbolTable.getParameters(currentMethod) != null) {
+                    for (var param : symbolTable.getParameters(currentMethod)) {
+                        if (param.getName().equals(var.get("name"))) {
+                            if (param.getType().getName().equals("boolean")) {
+                                countBoolConsts++;
+                            }
                         }
                     }
                 }
@@ -129,18 +133,22 @@ public class astOpValidator extends AnalysisVisitor {
         // contar valores inteiros numa VarRefExpr
         for (var var : varRefExpressions) {
             // se forem variáveis locais
-            for (var locarVar : symbolTable.getLocalVariables(currentMethod)) {
-                if (locarVar.getName().equals(var.get("name"))) {
-                    if (locarVar.getType().getName().equals("int")) {
-                        countIntConsts++;
+            if (symbolTable.getLocalVariables(currentMethod) != null) {
+                for (var locarVar : symbolTable.getLocalVariables(currentMethod)) {
+                    if (locarVar.getName().equals(var.get("name"))) {
+                        if (locarVar.getType().getName().equals("int")) {
+                            countIntConsts++;
+                        }
                     }
                 }
             }
             // se forem parametros
-            for (var param : symbolTable.getParameters(currentMethod)) {
-                if (param.getName().equals(var.get("name"))) {
-                    if (param.getType().getName().equals("int")) {
-                        countIntConsts++;
+            if (symbolTable.getParameters(currentMethod) != null) {
+                for (var param : symbolTable.getParameters(currentMethod)) {
+                    if (param.getName().equals(var.get("name"))) {
+                        if (param.getType().getName().equals("int")) {
+                            countIntConsts++;
+                        }
                     }
                 }
             }
@@ -323,16 +331,26 @@ public class astOpValidator extends AnalysisVisitor {
                 }
             }
         }
-
-        // Verificar se length é chamada em parametros da função atual
-        for (var param : symbolTable.getParameters(currentMethod)) {
-            if (param.getName().equals(varUsedOnNode.get("name"))) {
-                if (!param.getType().isArray()) {
-                    valid = false;
+        if (valid) {
+            // Verificar se length é chamada em parametros da função atual
+            for (var param : symbolTable.getParameters(currentMethod)) {
+                if (param.getName().equals(varUsedOnNode.get("name"))) {
+                    if (!param.getType().isArray()) {
+                        valid = false;
+                    }
                 }
             }
         }
-
+        if (valid) {
+            // Verificar se length é chamada em fields da classe
+            for (var field : symbolTable.getFields()) {
+                if (field.getName().equals(varUsedOnNode.get("name"))) {
+                    if (!field.getType().isArray()) {
+                        valid = false;
+                    }
+                }
+            }
+        }
 
         if (!valid) {
             // Create error report
@@ -472,23 +490,66 @@ public class astOpValidator extends AnalysisVisitor {
     private Void visitNewClass(JmmNode newClassNode, SymbolTable symbolTable) {
         boolean valid = true;
 
-        // verificar se classe é importada, se sim, está certo
-        // assign do tipo a = new A()
-        var elementsAssignmentNode = newClassNode.getParent().getChildren();
-        var importNames = symbolTable.getImports();
-        var foundImportName = true;
-        if (elementsAssignmentNode.get(1).getKind().equals("NewClass")) {
-            // se conter nome de qualquer import, assume-se como aceite. Ex: A a; B b; a = new B();
-            for (var importName : importNames) {
-                if (importName.equals(elementsAssignmentNode.get(1).get("className"))) {
-                    break;
-                }
-                if (!foundImportName) {
-                    valid = false;
+        var varLeft = newClassNode.getParent().getChildren().get(0);
+        var varLeftType = "";
+
+        // verificar o tipo da varLeft
+        // se for variável local
+        if (symbolTable.getLocalVariables(currentMethod) != null) {
+            for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                if (localVar.getName().equals(varLeft.get("name"))) {
+                    varLeftType = localVar.getType().getName();
                 }
             }
         }
+        // se for parametro da função atual
+        if (varLeftType.isEmpty()) {
+            if (symbolTable.getParameters(currentMethod) != null) {
+                for (var param : symbolTable.getParameters(currentMethod)) {
+                    if (param.getName().equals(varLeft.get("name"))) {
+                        varLeftType = param.getType().getName();
+                    }
+                }
+            }
+        }
+        // se for field da classe
+        if (varLeftType.isEmpty()) {
+            if (symbolTable.getFields() != null) {
+                for (var field : symbolTable.getFields()) {
+                    if (field.getName().equals(varLeft.get("name"))) {
+                        varLeftType = field.getType().getName();
+                    }
+                }
+            }
+        }
+        // se for do tipo import
+        if (varLeftType.isEmpty()) {
+            if (symbolTable.getImports() != null) {
+                for (var importName : symbolTable.getImports()) {
+                    if (importName.equals(varLeft.get("name"))) {
+                        varLeftType = importName;
+                    }
+                }
+            }
+        }
+        // não está declarada
+        if (varLeftType.isEmpty()) valid = false;
 
+        boolean found = false;
+        // variável da esquerda é declaração do import
+        if (symbolTable.getImports() != null) {
+            for (var importName : symbolTable.getImports()) {
+                if (importName.equals(varLeftType)) {
+                    found = true;
+                    break;
+                }
+            }
+        }
+        // se for do tipo da classe
+        if (varLeftType.equals(symbolTable.getClassName())) {
+            found = true;
+        }
+        if (!found) valid = false;
 
         if (!valid) {
             // Create error report
@@ -942,6 +1003,25 @@ public class astOpValidator extends AnalysisVisitor {
                         break;
                     }
                 }
+                if (!found) {
+                    if (symbolTable.getFields() != null) {
+                        for (var field : symbolTable.getFields()) {
+                            if (field.getName().equals(returnElement.get("name"))) {
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!found) {
+                    if (returnElement.hasAttribute("name")) {
+                        if (returnElement.get("name").equals("true") || returnElement.get("name").equals("false")) {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
                 if (found) break;
                 // se não existir, dá erro
                 valid = false;
@@ -1187,26 +1267,35 @@ public class astOpValidator extends AnalysisVisitor {
         }
         // Check if var in return exists
         else {
-            for (var returnElement : returnTypes) {
-                if (symbolTable.getParameters(currentMethod) != null && symbolTable.getParameters(currentMethod).stream()
-                        .anyMatch(param -> param.getName().equals(returnElement.get(1)))) {
-                    returnTypes.clear();
-                    return null;
-                } else if (symbolTable.getLocalVariables(currentMethod) != null && symbolTable.getLocalVariables(currentMethod).stream()
-                        .anyMatch(local -> local.getName().equals(returnElement.get(1)))) {
-                    returnTypes.clear();
-                    return null;
-                } else if (symbolTable.getImports() != null && symbolTable.getImports().stream()
-                        .anyMatch(imp -> imp.equals(returnElement.get(1)))) {
-                    returnTypes.clear();
-                    return null;
+            if (returnTypes != null) {
+                for (var returnElement : returnTypes) {
+                    if (symbolTable.getParameters(currentMethod) != null && symbolTable.getParameters(currentMethod).stream()
+                            .anyMatch(param -> param.getName().equals(returnElement.get(1)))) {
+                        returnTypes.clear();
+                        return null;
+                    } else if (symbolTable.getLocalVariables(currentMethod) != null && symbolTable.getLocalVariables(currentMethod).stream()
+                            .anyMatch(local -> local.getName().equals(returnElement.get(1)))) {
+                        returnTypes.clear();
+                        return null;
+                    } else if (symbolTable.getImports() != null && symbolTable.getImports().stream()
+                            .anyMatch(imp -> imp.equals(returnElement.get(1)))) {
+                        returnTypes.clear();
+                        return null;
+                    } else if (symbolTable.getFields() != null && symbolTable.getFields().stream()
+                            .anyMatch(field -> field.getName().equals(returnElement.get(1)))) {
+                        returnTypes.clear();
+                        return null;
+                    } else if (returnElement.get(1).equals("true") || returnElement.get(1).equals("false")) {
+                        for (var method : methods) {
+                            if (method.get("methodName").equals(currentMethod)) {
+                                var expectedFuncRetType = method.getChildren().get(0).get("value");
+                                if (!expectedFuncRetType.equals("boolean")) valid = false;
+                            }
+                        }
+                        if (valid) return null;
+                    }
+                    valid = false;
                 }
-                else if (symbolTable.getFields() != null && symbolTable.getFields().stream()
-                        .anyMatch(field -> field.getName().equals(returnElement.get(1)))) {
-                    returnTypes.clear();
-                    return null;
-                }
-                valid = false;
             }
         }
 
@@ -1227,10 +1316,41 @@ public class astOpValidator extends AnalysisVisitor {
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
         currentMethod = method.get("methodName");
-
         boolean valid = true;
-        var returnType = table.getReturnType(currentMethod);
 
+        // verificar se tem return para o caso de uma função que precise de retornar um tipo
+        if (method.getChildren().get(0).hasAttribute("value")) {
+            int numReturns = method.getDescendants("ReturnStmt").size();
+            String funcRetType = method.getChildren().get(0).get("value");
+            if (funcRetType.equals("int") || funcRetType.equals("boolean")) {
+                if (numReturns == 0) valid = false;
+            }
+        }
+
+        // validar a estrutura do método main
+        if (currentMethod.equals("main")) {
+            // só pode ter um node Param como node filho
+            if (method.getChildren().size() > 1) {
+                valid = false;
+            }
+
+            var mainParam = method.getChildren("Param").get(0);
+            var paramIsArray = !mainParam.getChildren("Array").isEmpty();
+            // tem que ser array senão dá erro
+            if (!paramIsArray) {
+                valid = false;
+            }
+            else {
+                // se o parametro for array
+                var arrayKind = mainParam.getChildren("Array").get(0);
+                // tem que ser do tipo String
+                if (!arrayKind.getChildren().get(0).getKind().equals("String")) {
+                    valid = false;
+                }
+            }
+        }
+
+        var returnType = table.getReturnType(currentMethod);
 
         List<Symbol> localsList = table.getLocalVariables(currentMethod);
         Pair<String, List<Symbol>> pairLocals = new Pair<>(currentMethod, localsList);
@@ -1289,7 +1409,10 @@ public class astOpValidator extends AnalysisVisitor {
        for (Pair<JmmNode, JmmNode> functionCalled : functionsCalled) {
             // se coincidir com o método a analisar atualmente, estudamos esse método
             if (functionCalled.a.get("methodName").equals(currentMethod)) {
+
+                // verificar se foi dado o numero correto de parametros
                 var numVarArgsCalled = 0;
+
                 for (var methodChild : methodChildren) {
                     // varargs está dentro do Kind Param
                     if (methodChild.getKind().equals("Param")) {
@@ -1299,6 +1422,24 @@ public class astOpValidator extends AnalysisVisitor {
 
                         // se existir pelo menos um parametro varargs
                         if (numVarArgsCalled > 0) {
+
+                            // verificar se foi dado o tipo correto de parametros ao varargs
+                            var numParamsGiven = 0;
+                            String previousKind = null;
+                            for (var node : functionCalled.a.getChildren()) {
+                                if (node.hasAttribute("name")) {
+                                    if (node.get("name").equals("this")) continue;
+                                }
+                                // só contam parametros com kinds diferentes
+                                if (!node.getKind().equals(previousKind)) numParamsGiven++;
+                                previousKind = node.getKind();
+                            }
+                            var numParamsExpected = method.getChildren("Param").size();
+                            if (numParamsExpected != numParamsGiven) {
+                                valid = false;
+                                break;
+                            }
+
                             boolean isLastParamVarArgs = !method.getChildren("Param").get(parametersNumber - 1).getChildren("VarArgs").isEmpty();
                             // só pode existir um parametro varargs nos parametros da função e tem que estar como último parâmetro dado, caso contrário dá erro
                             if (!isLastParamVarArgs || numVarArgsCalled > 1) {

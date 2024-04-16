@@ -1,0 +1,6 @@
+class MainMethodWrong {
+
+    public void main(String[] args) {
+
+    }
+}
