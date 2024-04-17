@@ -1493,6 +1493,18 @@ public class astOpValidator extends AnalysisVisitor {
             }
         }
 
+        // verificar se existem parametros repetidos
+        if (table.getParameters(currentMethod) != null) {
+            for (int i = 0; i < table.getParameters(currentMethod).size(); i++) {
+                for (int j = i + 1; j < table.getParameters(currentMethod).size(); j++) {
+                    if (table.getParameters(currentMethod).get(i).getName().equals(table.getParameters(currentMethod).get(j).getName())) {
+                        valid = false;
+                        break;
+                    }
+                }
+            }
+        }
+
         // verificar se tem return para o caso de uma função que precise de retornar um tipo
         if (method.getChildren().get(0).hasAttribute("value")) {
             int numReturns = method.getDescendants("ReturnStmt").size();
