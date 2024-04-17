@@ -80,7 +80,7 @@ public class JasminGenerator {
 
         // generate class name
         var className = ollirResult.getOllirClass().getClassName();
-        code.append(".class ").append(className).append(NL).append(NL);
+        code.append(".class ").append(className).append(NL);
 
         if(ollirResult.getOllirClass().getSuperClass() != null) {
             var superName = ollirResult.getOllirClass().getSuperClass();
@@ -229,8 +229,12 @@ public class JasminGenerator {
         for (var inst : method.getInstructions()) {
             var instCode = StringLines.getLines(generators.apply(inst)).stream()
                     .collect(Collectors.joining(NL + TAB, TAB, NL));
-
             code.append(instCode);
+            // fazer if para o pop
+            if (inst.getInstType() == InstructionType.CALL
+                    && ((CallInstruction) inst).getReturnType().getTypeOfElement() != ElementType.VOID) {
+                code.append(TAB).append("pop").append(NL);
+            }
         }
 
         code.append(".end method\n");
@@ -323,10 +327,10 @@ public class JasminGenerator {
     private String getVirtualCall(CallInstruction callInstruction) {
         var code = new StringBuilder();
         var className = ollirResult.getOllirClass().getClassName();
-        code.append(generators.apply(callInstruction.getArguments().get(0)));
+        code.append(generators.apply(callInstruction.getOperands().get(0)));
 
-        for (var staticElement : callInstruction.getOperands()) {
-            code.append(generators.apply(staticElement));
+        for (var argument : callInstruction.getArguments()) {
+            code.append(generators.apply(argument));
         }
 
         code.append("invokevirtual ");
@@ -342,9 +346,10 @@ public class JasminGenerator {
         code.append(methodName);
         // Argumentos
         code.append("(");
-        for (var element :callInstruction.getOperands()){
+        for (var element :callInstruction.getArguments()){
             code.append(getJasminType(element.getType()));
         }
+
         code.append(")");
         var retType = getJasminType(callInstruction.getReturnType());
         code.append(retType).append(NL);
@@ -362,26 +367,42 @@ public class JasminGenerator {
     private String getStaticCall(CallInstruction callInstruction) {
         var code = new StringBuilder();
         var className = ollirResult.getOllirClass().getClassName();
+        /*
         for (var staticElement : callInstruction.getOperands()) {
             code.append(generators.apply(staticElement));
         }
+        */
+
+        for (var argument : callInstruction.getArguments()) {
+            code.append(generators.apply(argument));
+        }
 
         code.append("invokestatic ");
+        var first = (Operand) callInstruction.getOperands().get(0);
+        var firstName = first.getName();
 
         //classes importadas
-        for (var importClass : ollirResult.getOllirClass().getImports()) {
-            if (importClass.endsWith(className)) {
-                className.replaceAll("\\.", "/");
-            }
+
+        if (firstName.equals("this")){
+            code.append(className);
         }
-        code.append(className).append("/");
+        else {
+            for (var importClass : ollirResult.getOllirClass().getImports()) {
+                if (importClass.endsWith(firstName)) {
+                    firstName.replaceAll("\\.", "/");
+                }
+            }
+            code.append(firstName);
+        }
+
+        code.append("/");
         // ver o que é este elemento
         var methodName = ((LiteralElement) callInstruction.getMethodName()).getLiteral().replace("\"", "");
         code.append(methodName);
         // Argumentos
         code.append("(");
         for (var agr :callInstruction.getArguments()){
-            code.append(generators.apply(agr));
+            code.append(getJasminType(agr.getType()));
         }
         code.append(")");
         var retType = getJasminType(callInstruction.getReturnType());
@@ -392,6 +413,8 @@ public class JasminGenerator {
 
     private String getSpecialCall(CallInstruction callInstruction) {
         var code = new StringBuilder();
+
+        code.append(generators.apply(callInstruction.getOperands().get(0)));
 
         code.append("invokespecial ");
         var className = ollirResult.getOllirClass().getClassName();
@@ -452,7 +475,23 @@ public class JasminGenerator {
     }
 
     private String generateLiteral(LiteralElement literal) {
-        return "ldc " + literal.getLiteral() + NL;
+        var code = new StringBuilder();
+        if (literal.getType().getTypeOfElement() != ElementType.INT32 && literal.getType().getTypeOfElement() != ElementType.BOOLEAN) {
+            return "ldc " + literal.getLiteral() + NL;
+        } else {
+            var value = Integer.parseInt(literal.getLiteral());
+            if (this.between(value, -1, 5)) code.append("iconst_");
+            else if (this.between(value, -128, 127)) code.append("bipush ");
+            else if (this.between(value, -32768, 32767)) code.append("sipush ");
+            else code.append("ldc ");
+
+            if (value == -1) code.append("m1");
+            else code.append(value);
+
+            code.append(NL);
+
+        }
+        return code.toString();
     }
 
     private String generateOperand(Operand operand) {
@@ -467,7 +506,7 @@ public class JasminGenerator {
                 return "aload " + reg + NL;
             }
             case "THIS" -> {
-                return "aload_0" + NL;
+                return "aload_" + reg + NL;
             }
         }
         return "";
@@ -511,6 +550,10 @@ public class JasminGenerator {
         code.append(returnType).append(NL);
 
         return code.toString();
+    }
+
+    private boolean between(int value, int lower, int upper) {
+        return value <= upper && value >= lower;
     }
 
 }
