@@ -1505,6 +1505,9 @@ public class astOpValidator extends AnalysisVisitor {
             }
         }
 
+        var returnNodes = method.getDescendants("ReturnStmt");
+        if (returnNodes.size() > 1) valid = false;
+
         // verificar se tem return para o caso de uma função que precise de retornar um tipo
         if (method.getChildren().get(0).hasAttribute("value")) {
             int numReturns = method.getDescendants("ReturnStmt").size();
