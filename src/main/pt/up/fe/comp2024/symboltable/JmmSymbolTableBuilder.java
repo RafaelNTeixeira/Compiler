@@ -144,6 +144,7 @@ public class JmmSymbolTableBuilder {
 
         for (JmmNode methodNode : methodDeclarations) {
             for (JmmNode node : methodNode.getChildren()) {
+                if (node.getKind().equals("Void")) continue;
                 if (node.getParent().get("methodName").equals("main")) {
                     isArray = true;
                     JmmNode mainNode = node.getChildren().get(0);

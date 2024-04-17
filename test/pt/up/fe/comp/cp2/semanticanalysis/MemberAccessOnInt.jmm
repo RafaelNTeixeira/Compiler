@@ -1,0 +1,13 @@
+class MemberAccessOnInt {
+
+    public int foo() {
+        int a;
+        a = 0;
+
+        return a.length;
+    }
+
+    public static void main(String[] args) {
+
+    }
+}

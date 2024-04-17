@@ -1,0 +1,12 @@
+class VarargsWrong {
+
+    public int foo() {
+        int a;
+        a = this.varargs([10, 20, 30], 40);
+        return a;
+    }
+
+    public int varargs(int... a) {
+        return a[0];
+    }
+}

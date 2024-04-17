@@ -1,0 +1,10 @@
+class StaticMethodWithThis {
+    public int plusOne(int num) {
+        return num + 1;
+    }
+
+    public static void main(String[] args) {
+        int a;
+        a = this.plusOne(a);
+    }
+}

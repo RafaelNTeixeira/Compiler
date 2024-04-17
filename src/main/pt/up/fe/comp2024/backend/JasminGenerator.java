@@ -306,32 +306,107 @@ public class JasminGenerator {
 
     private String generateCall(CallInstruction callInstruction){
         String code;
+        // nestes todos ainda está tudo em código que precisa de ser melhorado
         code = switch (callInstruction.getInvocationType()) {
-            case invokevirtual -> null;
-            case invokeinterface -> null;
+            case invokevirtual -> getVirtualCall(callInstruction);
+            case invokeinterface -> getInterfaceCall(callInstruction);
             case invokespecial -> getSpecialCall(callInstruction);
-            case invokestatic -> null;
+            case invokestatic -> getStaticCall(callInstruction);
             case NEW -> getNewCall(callInstruction);
-            case arraylength -> null;
-            case ldc -> null;
+            case arraylength -> getLengthCall(callInstruction);
+            case ldc -> getLdcCall(callInstruction);
         };
 
         return code;
     }
 
-    private String getSpecialCall(CallInstruction callInstruction) {
+    private String getVirtualCall(CallInstruction callInstruction) {
         var code = new StringBuilder();
-        for (var agr : callInstruction.getArguments()){
+        var className = ollirResult.getOllirClass().getClassName();
+        code.append(generators.apply(callInstruction.getArguments().get(0)));
+
+        for (var staticElement : callInstruction.getOperands()) {
+            code.append(generators.apply(staticElement));
+        }
+
+        code.append("invokevirtual ");
+        for (var importClass : ollirResult.getOllirClass().getImports()) {
+            if (importClass.endsWith(className)) {
+                className.replaceAll("\\.", "/");
+            }
+        }
+        code.append(className).append("/");
+
+        // ver o que é este elemento
+        var methodName = ((LiteralElement) callInstruction.getMethodName()).getLiteral().replace("\"", "");
+        code.append(methodName);
+        // Argumentos
+        code.append("(");
+        for (var element :callInstruction.getOperands()){
+            code.append(getJasminType(element.getType()));
+        }
+        code.append(")");
+        var retType = getJasminType(callInstruction.getReturnType());
+        code.append(retType).append(NL);
+
+        return code.toString();
+    }
+
+    private String getInterfaceCall(CallInstruction callInstruction) {
+        var code = new StringBuilder();
+        code.append("invokeinterface ");
+
+        return code.toString();
+    }
+
+    private String getStaticCall(CallInstruction callInstruction) {
+        var code = new StringBuilder();
+        var className = ollirResult.getOllirClass().getClassName();
+        for (var staticElement : callInstruction.getOperands()) {
+            code.append(generators.apply(staticElement));
+        }
+
+        code.append("invokestatic ");
+
+        //classes importadas
+        for (var importClass : ollirResult.getOllirClass().getImports()) {
+            if (importClass.endsWith(className)) {
+                className.replaceAll("\\.", "/");
+            }
+        }
+        code.append(className).append("/");
+        // ver o que é este elemento
+        var methodName = ((LiteralElement) callInstruction.getMethodName()).getLiteral().replace("\"", "");
+        code.append(methodName);
+        // Argumentos
+        code.append("(");
+        for (var agr :callInstruction.getArguments()){
             code.append(generators.apply(agr));
         }
+        code.append(")");
+        var retType = getJasminType(callInstruction.getReturnType());
+        code.append(retType).append(NL);
+
+        return code.toString();
+    }
+
+    private String getSpecialCall(CallInstruction callInstruction) {
+        var code = new StringBuilder();
 
         code.append("invokespecial ");
         var className = ollirResult.getOllirClass().getClassName();
-        //code.append(className).append("/");
         if (callInstruction.getArguments().isEmpty()
                 || callInstruction.getArguments().get(0).getType().getTypeOfElement().equals(ElementType.THIS)){
             code.append(className);
-        } // else é ir buscar aos imports (a fazer depois)!
+        } // else é ir buscar aos imports
+        else {
+            for (var importClass : ollirResult.getOllirClass().getImports()) {
+                if (importClass.endsWith(className)) {
+                    className.replaceAll("\\.", "/");
+                }
+            }
+            code.append(className);
+        }
         code.append("/<init>(");
         for (var agr :callInstruction.getArguments()){
             code.append(generators.apply(agr));
@@ -348,11 +423,26 @@ public class JasminGenerator {
         for (var agr : callInstruction.getArguments()){
             code.append(generators.apply(agr));
         }
-        if (callInstruction.getReturnType().getTypeOfElement().name() == "OBJECTREF") {
+        if (callInstruction.getReturnType().getTypeOfElement().name().equals("OBJECTREF")) {
             var className = ollirResult.getOllirClass().getClassName();
             code.append("new ").append(className).append(NL);
             code.append("dup").append(NL);
         }
+
+        return code.toString();
+    }
+
+    private String getLengthCall(CallInstruction callInstruction) {
+        var code = new StringBuilder();
+        code.append(generators.apply(callInstruction.getArguments().get(0)));
+        code.append("arraylenght").append(NL);
+
+        return code.toString();
+    }
+
+    private String getLdcCall(CallInstruction callInstruction) {
+        var code = new StringBuilder();
+        code.append(generators.apply(callInstruction.getArguments().get(0))).append(NL);
 
         return code.toString();
     }
