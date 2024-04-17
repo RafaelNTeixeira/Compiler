@@ -1718,6 +1718,4 @@ public class astOpValidator extends AnalysisVisitor {
 
         return null;
     }
-
-
 }
