@@ -1686,29 +1686,27 @@ public class astOpValidator extends AnalysisVisitor {
                     if (methodChild.getKind().equals("Param")) {
                         int parametersNumber = method.getChildren("Param").size();
 
-                        if (!methodChild.getChildren("VarArgs").isEmpty()) numVarArgsCalled += 1;
+                        var varArgsNodes = method.getDescendants("VarArgs");
+                        numVarArgsCalled = method.getDescendants("VarArgs").size();
 
                         // se existir pelo menos um parametro varargs
                         if (numVarArgsCalled > 0) {
 
                             // verificar se foi dado o tipo correto de parametros ao varargs
                             var numParamsGiven = 0;
-                            String previousKind = null;
                             for (var node : functionCalled.a.getChildren()) {
                                 if (node.hasAttribute("name")) {
                                     if (node.get("name").equals("this")) continue;
                                 }
-                                // só contam parametros com kinds diferentes
-                                if (!node.getKind().equals(previousKind)) numParamsGiven++;
-                                previousKind = node.getKind();
+                                numParamsGiven++;
                             }
                             var numParamsExpected = method.getChildren("Param").size();
-                            if (numParamsExpected != numParamsGiven) {
+                            if (numParamsExpected > numParamsGiven) {
                                 valid = false;
                                 break;
                             }
 
-                            boolean isLastParamVarArgs = !method.getChildren("Param").get(parametersNumber - 1).getChildren("VarArgs").isEmpty();
+                            boolean isLastParamVarArgs = !method.getChildren().get(parametersNumber).getChildren("VarArgs").isEmpty();
                             // só pode existir um parametro varargs nos parametros da função e tem que estar como último parâmetro dado, caso contrário dá erro
                             if (!isLastParamVarArgs || numVarArgsCalled > 1) {
                                 valid = false;
