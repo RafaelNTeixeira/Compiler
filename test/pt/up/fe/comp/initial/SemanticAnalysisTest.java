@@ -19,6 +19,6 @@ public class SemanticAnalysisTest {
 
         System.out.println(result.getReports());
     }
-
-
 }
+
+
