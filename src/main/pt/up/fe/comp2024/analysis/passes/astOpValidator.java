@@ -1505,8 +1505,20 @@ public class astOpValidator extends AnalysisVisitor {
             }
         }
 
+        // verificar se tem mais que um return
         var returnNodes = method.getDescendants("ReturnStmt");
         if (returnNodes.size() > 1) valid = false;
+
+        // verificar se o return não é o último return existente
+        var descendents = method.getDescendants();
+        // se não for a função main
+        if (!currentMethod.equals("main")) {
+            // se não conter o tipo void
+            if (method.getChildren("Void").isEmpty()) {
+                // o último node tem que ser um return
+                if (!method.getChildren().get(method.getChildren().size()-1).getKind().equals("ReturnStmt")) valid = false;
+            }
+        }
 
         // verificar se tem return para o caso de uma função que precise de retornar um tipo
         if (method.getChildren().get(0).hasAttribute("value")) {
@@ -1552,6 +1564,66 @@ public class astOpValidator extends AnalysisVisitor {
         List<Symbol> localsList = table.getLocalVariables(currentMethod);
         Pair<String, List<Symbol>> pairLocals = new Pair<>(currentMethod, localsList);
         allLocalVariables.add(pairLocals);
+
+        // verificar se recebe tipo de retorno esperado
+        if (!currentMethod.equals("main")) {
+            if (method.getChildren("Void").isEmpty()) {
+                var returnNode = method.getDescendants("ReturnStmt");
+                if (returnNode.size() > 1) valid = false;
+                else {
+                    var returnNodeKind = returnNode.get(0).getChildren().get(0);
+                    if (returnNodeKind.getKind().equals("LiteralInteger")) {
+                        if (!returnType.getName().equals("int")) valid = false;
+                    }
+                    else if (returnNodeKind.getKind().equals("BinaryExpr")) {
+                        if (!returnType.getName().equals("int")) valid = false;
+                    }
+                    else if (returnNodeKind.getKind().equals("BinaryOp")) {
+                        if (!returnType.getName().equals("boolean")) valid = false;
+                    }
+                    else if (returnNodeKind.getKind().equals("VarRefExpr")) {
+                        // descobrir o tipo da variável
+                        if (table.getParameters(currentMethod) != null) {
+                            for (var param : table.getParameters(currentMethod)) {
+                                if (param.getName().equals(returnNodeKind.get("name"))) {
+                                    if (!returnType.getName().equals(param.getType().getName())) {
+                                        valid = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (table.getLocalVariables(currentMethod) != null) {
+                            for (var localVar : table.getLocalVariables(currentMethod)) {
+                                if (localVar.getName().equals(returnNodeKind.get("name"))) {
+                                    if (!returnType.getName().equals(localVar.getType().getName())) {
+                                        valid = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (table.getFields() != null) {
+                            for (var field : table.getFields()) {
+                                if (field.getName().equals(returnNodeKind.get("name"))) {
+                                    if (!returnType.getName().equals(field.getType().getName())) {
+                                        valid = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // se for função do tipo void
+            else {
+                // se tiver returnNode, falha. Ex: return; seria aceite mas não é registado pela nossa gramática daí,
+                // se tiver mais que um node ReturnStmt, é um return com valores, por isso tem que falhar
+                var returnNode = method.getDescendants("ReturnStmt");
+                if (!returnNode.isEmpty()) valid = false;
+            }
+        }
 
         if (method.get("methodName").equals("main")) {
             method.put("type", "main");
