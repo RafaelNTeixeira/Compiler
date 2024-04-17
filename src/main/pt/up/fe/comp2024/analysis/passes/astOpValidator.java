@@ -522,7 +522,7 @@ public class astOpValidator extends AnalysisVisitor {
         if (expressionNode.getKind().equals("FunctionCall")) {
             for (var method : this.methods) {
                 if (method.get("methodName").equals(expressionNode.get("methodName"))) {
-                    if (!method.getDescendants("VarArgs").isEmpty()) continue;
+                    if (!method.hasAttribute("type")) continue;
                     expressionNode.put("type", method.get("type"));
                     break;
                 }
