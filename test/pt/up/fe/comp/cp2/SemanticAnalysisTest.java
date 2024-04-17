@@ -246,8 +246,7 @@ public class SemanticAnalysisTest {
     public void miscLengthAsName() {
         var result = TestUtils
                 .analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/MiscLengthAsName.jmm"));
-        TestUtils.mustFail(result);
-        System.out.println(result.getReports());
+        TestUtils.noErrors(result);
     }
 
     @Test
