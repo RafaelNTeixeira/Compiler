@@ -1,0 +1,25 @@
+import io.asmth;
+import io.smth;
+Test extends asmth {
+
+
+.method public static main(args.array.String).V {
+tmp0.Test :=.Test new(Test).Test;
+invokespecial(tmp0.Test, "").V;
+test.Test :=.Test tmp0.Test;
+invokevirtual(test.Test, "call").Test;
+ret.V ;
+}
+
+.method public call().i32 {
+tmp2.smth :=.smth new(smth).smth;
+invokespecial(tmp2.smth, "").V;
+s.smth :=.smth tmp2.smth;
+invokevirtual(s.smth, "apply").smth;
+ret.i32 1.i32;
+}
+
+.construct Test().V {
+invokespecial(this, "").V;
+}
+}

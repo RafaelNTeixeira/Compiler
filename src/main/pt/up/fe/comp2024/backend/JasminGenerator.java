@@ -168,7 +168,7 @@ public class JasminGenerator {
         return code.toString();
     }
 
-    private static String getJasminType(Type type) {
+    private String getJasminType(Type type) {
         String jasminType;
         String typeName = type.getTypeOfElement().name();
 
@@ -176,12 +176,35 @@ public class JasminGenerator {
             case "INT32" -> "I";
             case "BOOLEAN" -> "Z";
             case "ARRAYREF" -> "[";
-            case "OBJECTREF", "CLASS", "THIS" -> "L";
+            case "OBJECTREF" ->  getObjectType(type);
+            case "CLASS", "THIS" -> "L";
             case "STRING" -> "Ljava/lang/String;";
             case "VOID" -> "V";
             default -> throw new IllegalArgumentException("Unsupported type: " + typeName);
         };
         return jasminType;
+    }
+
+    private String getObjectType(Type type) {
+        var code = new StringBuilder();
+        var name = ((ClassType) type).getName();
+        var className = ollirResult.getOllirClass().getClassName();
+        code.append("L");
+        if (name.equals("this")){
+            code.append(className);
+            return code.toString();
+        }
+
+        for (var imports : ollirResult.getOllirClass().getImports()) {
+            if (imports.endsWith(className)) {
+                imports.replaceAll("\\.", "/");
+                code.append(imports);
+                return code.toString();
+            }
+        }
+
+        code.append(name);
+        return code.toString();
     }
 
 
@@ -367,11 +390,6 @@ public class JasminGenerator {
     private String getStaticCall(CallInstruction callInstruction) {
         var code = new StringBuilder();
         var className = ollirResult.getOllirClass().getClassName();
-        /*
-        for (var staticElement : callInstruction.getOperands()) {
-            code.append(generators.apply(staticElement));
-        }
-        */
 
         for (var argument : callInstruction.getArguments()) {
             code.append(generators.apply(argument));
