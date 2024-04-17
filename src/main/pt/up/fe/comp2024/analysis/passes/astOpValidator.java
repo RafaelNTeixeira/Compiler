@@ -49,7 +49,7 @@ public class astOpValidator extends AnalysisVisitor {
         addVisit("Var", this::visitVar);
         addVisit("VarArgs", this::visitVarArgs);
         addVisit("ImportDeclaration", this::visitImports);
-        addVisit("Expression", this::visitFunctionCall);
+        addVisit("FunctionCall", this::visitExpression);
         addVisit("IfCondition", this::visitIfConditions);
         addVisit("WhileLoop", this::visitWhileLoops);
         addVisit("ArrayInit", this::visitArrayInit);
@@ -510,6 +510,15 @@ public class astOpValidator extends AnalysisVisitor {
             }
         }
 
+        if (expressionNode.getKind().equals("FunctionCall")) {
+            for (var method : this.methods) {
+                if (method.get("methodName").equals(expressionNode.get("methodName"))) {
+                    expressionNode.put("type", method.get("type"));
+                    break;
+                }
+            }
+        }
+
         if (!valid) {
             // Create error report
             var message = String.format("Invalid expression: '%s'", expressionNode);
@@ -732,37 +741,6 @@ public class astOpValidator extends AnalysisVisitor {
                     message,
                     null)
             );
-        }
-
-        return null;
-    }
-
-    private Void visitFunctionCall(JmmNode functionCallNode, SymbolTable symbolTable) {
-        boolean valid = true;
-        var methods = symbolTable.getMethods();
-
-        // do tipo a.bar();
-        // percorrer por todos os métodos e verificar se numa FunctionCall o método existe
-        for (var methodName : methods) {
-            if (methodName.equals(functionCallNode.get("methodName"))) {
-                valid = true;
-                break;
-            }
-            valid = false;
-        }
-
-        if (!valid) {
-            // Create error report
-            var message = String.format("Call to non existent method: '%s'", functionCallNode);
-            addReport(Report.newError(
-                    Stage.SEMANTIC,
-                    NodeUtils.getLine(functionCallNode),
-                    NodeUtils.getColumn(functionCallNode),
-                    message,
-                    null)
-            );
-        } else {
-            functionCallNode.put("type", functionCallNode.get("value"));
         }
 
         return null;
@@ -1178,7 +1156,7 @@ public class astOpValidator extends AnalysisVisitor {
                     }
                 }
             }
-            if (calledFunction != null && currentFunction != null ) {
+            if (calledFunction != null && currentFunction != null) {
                 // se a função chamada não retornar o mesmo tipo da função atual, dá erro
                 if (!calledFunction.getChildren().get(0).get("type").equals(currentFunction.getChildren().get(0).get("type"))) {
                     valid = false;
