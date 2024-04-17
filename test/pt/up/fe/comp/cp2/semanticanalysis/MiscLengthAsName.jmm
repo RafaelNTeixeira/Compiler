@@ -1,0 +1,12 @@
+class MiscLengthAsName {
+    public int foo() {
+        int length;
+
+        length = [1, 2, 3].length;
+        return length;
+    }
+
+    public static void main(String[] args) {
+
+    }
+}

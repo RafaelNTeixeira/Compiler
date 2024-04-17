@@ -1,0 +1,9 @@
+class NoReturns {
+    int foo() {
+
+    }
+
+    public static void main(String[] args) {
+
+    }
+}
