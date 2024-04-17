@@ -516,6 +516,45 @@ public class astOpValidator extends AnalysisVisitor {
                     expressionNode.put("type", method.get("type"));
                     break;
                 }
+
+            }
+
+            for (var functionElement : expressionNode.getChildren()) {
+                // retirar tipo dos elementos e inseri-lo nos nodes que constituem a chamada à função
+                if (functionElement.getKind().equals("VarRefExpr")) {
+                    if (symbolTable.getImports() != null) {
+                        for (var importName : symbolTable.getImports()) {
+                            if (importName.equals(functionElement.get("name"))) {
+                                functionElement.put("type", importName);
+                                break;
+                            }
+                        }
+                    }
+                    if (symbolTable.getLocalVariables(currentMethod) != null) {
+                        for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                            if (localVar.getName().equals(functionElement.get("name"))) {
+                                functionElement.put("type", localVar.getType().getName());
+                                break;
+                            }
+                        }
+                    }
+                    if (symbolTable.getParameters(currentMethod) != null) {
+                        for (var param : symbolTable.getParameters(currentMethod)) {
+                            if (param.getName().equals(functionElement.get("name"))) {
+                                functionElement.put("type", param.getType().getName());
+                                break;
+                            }
+                        }
+                    }
+                    if (symbolTable.getFields() != null) {
+                        for (var field : symbolTable.getFields()) {
+                            if (field.getName().equals(functionElement.get("name"))) {
+                                functionElement.put("type", field.getType().getName());
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         }
 
