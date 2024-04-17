@@ -35,6 +35,7 @@ public class astOpValidator extends AnalysisVisitor {
 
     @Override
     public void buildVisitor() {
+        addVisit("Program", this::visitProgram);
         addVisit(Kind.IMPORT_STATMENT, this::visitImportStatement);
         addVisit(Kind.METHOD_DECL, this::visitMethodDecl);
         addVisit(Kind.VAR_DECL, this::visitVarDecl);
@@ -65,25 +66,14 @@ public class astOpValidator extends AnalysisVisitor {
         addVisit("BinaryOp", this::visitBinaryOp);
         addVisit("Param", this::visitParam);
     }
-    /*
-    private Void example(JmmNode Node, SymbolTable symbolTable) {
-        boolean valid = true;
 
-        if (!valid) {
-            // Create error report
-            var message = String.format("Invalid: '%s'", Node);
-            addReport(Report.newError(
-                    Stage.SEMANTIC,
-                    NodeUtils.getLine(Node),
-                    NodeUtils.getColumn(Node),
-                    message,
-                    null)
-            );
+    private Void visitProgram(JmmNode programNode, SymbolTable symbolTable) {
+        var methodsNodes = programNode.getDescendants("MethodDecl");
+        for (var method : methodsNodes) {
+            methods.add(method);
         }
-
         return null;
     }
-    */
 
     private Void visitClassDecl(JmmNode classDeclNode, SymbolTable symbolTable) {
         boolean valid = true;
@@ -532,6 +522,7 @@ public class astOpValidator extends AnalysisVisitor {
         if (expressionNode.getKind().equals("FunctionCall")) {
             for (var method : this.methods) {
                 if (method.get("methodName").equals(expressionNode.get("methodName"))) {
+                    if (!method.getDescendants("VarArgs").isEmpty()) continue;
                     expressionNode.put("type", method.get("type"));
                     break;
                 }
@@ -1131,6 +1122,18 @@ public class astOpValidator extends AnalysisVisitor {
         var parameters = symbolTable.getParameters(currentMethod);
         boolean valid = true;
 
+        // não pode conter varargs num return
+        for (var method : methods) {
+            if (!returnStatm.getChildren("FunctionCall").isEmpty()) {
+                // se encontrar a função chamada
+                if (method.get("methodName").equals(returnStatm.getChildren("FunctionCall").get(0).get("methodName"))) {
+                    boolean hasVarArgs = !method.getDescendants("VarArgs").isEmpty();
+                    if (hasVarArgs) valid = false;
+                    break;
+                }
+            }
+        }
+
         for (JmmNode returnElement : returnElements) {
             if (returnElement.hasAttribute("name")) {
                 List<String> elementInfo = Arrays.asList(returnElement.getKind(), returnElement.get("name"));
@@ -1480,7 +1483,7 @@ public class astOpValidator extends AnalysisVisitor {
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
         currentMethod = method.get("methodName");
-        methods.add(method);
+
         boolean valid = true;
 
         // verificar se existem métodos repetidos
