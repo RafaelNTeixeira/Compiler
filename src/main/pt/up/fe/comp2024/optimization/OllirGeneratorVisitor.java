@@ -150,9 +150,9 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
                     code.append("invokestatic(");
                     code.append(child.getChild(0).getChild(0).get("name") + ", ");
                     code.append("\"" + child.getChild(0).get("methodName") + "\"");
-                    if (child.getChildren().size() > 1) {
+                    if (child.getChild(0).getChildren().size() > 1) {
                         code.append(", " + child.getChild(0).getChild(1).get("name"));
-                        var type = OptUtils.toOllirOpType(child.getChild(0).getChild(1));
+                        var type = OptUtils.toOllirType(child.getChild(0).getChild(1));
                         code.append(type);
                     }
 
@@ -220,7 +220,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         var returner = methodChildren.get(afterParam);
         if (Objects.equals(returner.getChild(0).getKind(), "BinaryExpr")){
             var type = OptUtils.toOllirOpType(returner.getChild(0));
-            code.append("temp0" + type + " :=" + type);
+            code.append(OptUtils.getTemp() + type + " :=" + type);
             code.append(" " + returner.getChild(0).getChild(0).get("name") + type);
             code.append(returner.getChild(0).get("op") + type);
             code.append(" " + returner.getChild(0).getChild(1).get("name") + type);
@@ -233,7 +233,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         else if (returner.getChild(0).hasAttribute("value")){
             code.append(returner.getChild(0).get("value") + retType + ";");
         }else {
-            code.append("tmp0" + retType + ";");
+            code.append(OptUtils.getTemp() + retType + ";");
         }
 
         code.append(NL);
@@ -330,20 +330,84 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
             code.append(";\n");
         }
 
-
         return code.toString();
     }
+
 
 
     private String visitAssign(JmmNode node, Void unused) {
 
         StringBuilder code = new StringBuilder();
+        var tmp = "";
 
-        code.append(node.getChild(0).get("name"));
+        for(var child : node.getChildren()){
+
+            if (child.getKind().equals("BinaryExpr")){
+
+                var op = child.get("op");
+                var type = OptUtils.toOllirOpType(child);
+                if (child.getChild(0).getKind().equals("FunctionCall")){
+                    var result1 = visit(child.getChild(0));
+                }
+                if (child.getChild(1).getKind().equals("FunctionCall")){
+                    tmp = OptUtils.getTemp();
+                    code.append(tmp + type + " :=" + type + " ");
+                    code.append("invokevirtual(" + child.getChild(1).getChild(0).get("name") + ", \"" + child.getChild(1).get("methodName") + "\"" + ")");
+                    code.append(type + ";" + NL);
+
+                }
+                var tmp2 = OptUtils.getTemp();
+                code.append(tmp2 + type + " :=" + type + " " );
+                code.append(child.getChild(0).get("name") + type + " ");
+                code.append(op + type + " ");
+                code.append(tmp + type);
+                code.append(";" + NL);
+                tmp = tmp2;
+            }
+        }
+
+
+
         var retType = OptUtils.toOllirType(node.getJmmChild(0));
-        code.append(retType + " :=" + retType + " ");
-        if (node.getChild(1).hasAttribute("name")) code.append(node.getChild(1).get("name"));
-        else if (node.getChild(1).hasAttribute("value")) code.append(node.getChild(1).get("value"));
+
+        if (!tmp.equals("")){
+            code.append(node.getChild(0).get("name") + retType + " :=" + retType + " " + tmp);
+        }
+        if (node.getChild(1).hasAttribute("name")){
+            code.append(node.getChild(0).get("name"));
+            code.append(retType + " :=" + retType + " ");
+            code.append(node.getChild(1).get("name"));
+        }
+        else if (node.getChild(1).hasAttribute("value")){
+            code.append(node.getChild(0).get("name"));
+            code.append(retType + " :=" + retType + " ");
+            code.append(node.getChild(1).get("value"));
+        }
+        else if (node.getChild(1).hasAttribute("className")){
+            tmp = OptUtils.getTemp();
+            code.append(tmp + retType + " :=" + retType + " new(" + node.getChild(1).get("className") + ")" + retType + ";" + NL);
+            code.append("invokespecial(" + tmp + retType + ", " + "\"\").V;" + NL);
+            code.append(node.getChild(0).get("name"));
+            code.append(retType + " :=" + retType + " " + tmp);
+        }
+        else if (node.getChild(1).hasAttribute("methodName")){
+
+            tmp = OptUtils.getTemp();
+            var type0 = OptUtils.toOllirType(node.getChild(1).getChild(0));
+            code.append(tmp + retType + " :=" + retType + " invokevirtual(" + node.getChild(1).getChild(0).get("name") + type0 + ", ");
+            code.append("\"" + node.getChild(1).get("methodName") + "\"");
+            int first = 0;
+            for(var child : node.getChild(1).getChildren()){
+                if (first == 0){
+                    first++;
+                    continue;
+                }
+                var newType = OptUtils.toOllirType(child);
+                code.append(", " + child.get("name") + newType);
+            }
+            code.append(")" + retType + ";" + NL);
+            code.append(node.getChild(0).get("name") + retType + " :=" + retType + " " + tmp);
+        }
         code.append(retType);
 
         return code.toString();
