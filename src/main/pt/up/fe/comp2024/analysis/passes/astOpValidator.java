@@ -1287,6 +1287,8 @@ public class astOpValidator extends AnalysisVisitor {
         var parameters = symbolTable.getParameters(currentMethod);
         boolean valid = true;
 
+        if (!returnStatm.getDescendants("VarArgs").isEmpty()) valid = false;
+
         // não pode conter varargs num return
         for (var method : methods) {
             if (!returnStatm.getChildren("FunctionCall").isEmpty()) {
