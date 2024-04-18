@@ -1387,6 +1387,18 @@ public class astOpValidator extends AnalysisVisitor {
                     }
                 }
                 if (!found) {
+                    if (symbolTable.getImports() != null) {
+                        for (var importName : symbolTable.getImports()) {
+                            if (returnElement.hasAttribute("name")) {
+                                if (importName.equals(returnElement.get("name"))) {
+                                    found = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!found) {
                     if (returnElement.hasAttribute("name")) {
                         if (returnElement.hasAttribute("name")) {
                             if (returnElement.get("name").equals("true") || returnElement.get("name").equals("false")) {
@@ -1775,7 +1787,9 @@ public class astOpValidator extends AnalysisVisitor {
             if (!returnNodes.isEmpty()) valid = false;
         }
         else {
-            if (returnNodes.isEmpty()) valid = false;
+            if (!currentMethod.equals("main")) {
+                if (returnNodes.isEmpty()) valid = false;
+            }
         }
 
         // verificar se o return não é o último return existente
