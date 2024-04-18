@@ -563,33 +563,41 @@ public class astOpValidator extends AnalysisVisitor {
                 if (functionElement.getKind().equals("VarRefExpr")) {
                     if (symbolTable.getImports() != null) {
                         for (var importName : symbolTable.getImports()) {
-                            if (importName.equals(functionElement.get("name"))) {
-                                functionElement.put("type", importName);
-                                break;
+                            if (functionElement.hasAttribute("name")) {
+                                if (importName.equals(functionElement.get("name"))) {
+                                    functionElement.put("type", importName);
+                                    break;
+                                }
                             }
                         }
                     }
                     if (symbolTable.getLocalVariables(currentMethod) != null) {
                         for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                            if (localVar.getName().equals(functionElement.get("name"))) {
-                                functionElement.put("type", localVar.getType().getName());
-                                break;
+                            if (functionElement.hasAttribute("name")) {
+                                if (localVar.getName().equals(functionElement.get("name"))) {
+                                    functionElement.put("type", localVar.getType().getName());
+                                    break;
+                                }
                             }
                         }
                     }
                     if (symbolTable.getParameters(currentMethod) != null) {
                         for (var param : symbolTable.getParameters(currentMethod)) {
-                            if (param.getName().equals(functionElement.get("name"))) {
-                                functionElement.put("type", param.getType().getName());
-                                break;
+                            if (functionElement.hasAttribute("name")) {
+                                if (param.getName().equals(functionElement.get("name"))) {
+                                    functionElement.put("type", param.getType().getName());
+                                    break;
+                                }
                             }
                         }
                     }
                     if (symbolTable.getFields() != null) {
                         for (var field : symbolTable.getFields()) {
-                            if (field.getName().equals(functionElement.get("name"))) {
-                                functionElement.put("type", field.getType().getName());
-                                break;
+                            if (functionElement.hasAttribute("name")) {
+                                if (field.getName().equals(functionElement.get("name"))) {
+                                    functionElement.put("type", field.getType().getName());
+                                    break;
+                                }
                             }
                         }
                     }
@@ -622,8 +630,10 @@ public class astOpValidator extends AnalysisVisitor {
         // se for variável local
         if (symbolTable.getLocalVariables(currentMethod) != null) {
             for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                if (localVar.getName().equals(varLeft.get("name"))) {
-                    varLeftType = localVar.getType().getName();
+                if (varLeft.hasAttribute("name")) {
+                    if (localVar.getName().equals(varLeft.get("name"))) {
+                        varLeftType = localVar.getType().getName();
+                    }
                 }
             }
         }
@@ -631,8 +641,10 @@ public class astOpValidator extends AnalysisVisitor {
         if (varLeftType.isEmpty()) {
             if (symbolTable.getParameters(currentMethod) != null) {
                 for (var param : symbolTable.getParameters(currentMethod)) {
-                    if (param.getName().equals(varLeft.get("name"))) {
-                        varLeftType = param.getType().getName();
+                    if (varLeft.hasAttribute("name")) {
+                        if (param.getName().equals(varLeft.get("name"))) {
+                            varLeftType = param.getType().getName();
+                        }
                     }
                 }
             }
@@ -641,8 +653,10 @@ public class astOpValidator extends AnalysisVisitor {
         if (varLeftType.isEmpty()) {
             if (symbolTable.getFields() != null) {
                 for (var field : symbolTable.getFields()) {
-                    if (field.getName().equals(varLeft.get("name"))) {
-                        varLeftType = field.getType().getName();
+                    if (varLeft.hasAttribute("name")) {
+                        if (field.getName().equals(varLeft.get("name"))) {
+                            varLeftType = field.getType().getName();
+                        }
                     }
                 }
             }
@@ -651,8 +665,10 @@ public class astOpValidator extends AnalysisVisitor {
         if (varLeftType.isEmpty()) {
             if (symbolTable.getImports() != null) {
                 for (var importName : symbolTable.getImports()) {
-                    if (importName.equals(varLeft.get("name"))) {
-                        varLeftType = importName;
+                    if (varLeft.hasAttribute("name")) {
+                        if (importName.equals(varLeft.get("name"))) {
+                            varLeftType = importName;
+                        }
                     }
                 }
             }
@@ -702,27 +718,31 @@ public class astOpValidator extends AnalysisVisitor {
             var varStoring = arrayInitNode.getParent().getChildren("VarRefExpr").get(0);
             // Se for uma variável local
 
-            for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                // se a variável que está a guardar for array é aceite
-                if (localVar.getName().equals(varStoring.get("name")) && localVar.getType().isArray()) {
-                    // se esta for do tipo int
-                    if (localVar.getType().getName().equals("int")) {
-                        for (var valueGiven : valuesGiven) {
-                            if (!valueGiven.getKind().equals("IntegerLiteral")) {
-                                valid = false;
-                                break;
+            if (symbolTable.getLocalVariables(currentMethod) != null) {
+                for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                    // se a variável que está a guardar for array é aceite
+                    if (localVar.getName().equals(varStoring.get("name")) && localVar.getType().isArray()) {
+                        // se esta for do tipo int
+                        if (localVar.getType().getName().equals("int")) {
+                            for (var valueGiven : valuesGiven) {
+                                if (!valueGiven.getKind().equals("IntegerLiteral")) {
+                                    valid = false;
+                                    break;
+                                }
+                                type = "int";
                             }
-                            type = "int";
                         }
-                    }
-                    // Isto é válido?
-                    if (localVar.getType().getName().equals("boolean")) {
-                        for (var valueGiven : valuesGiven) {
-                            if (!valueGiven.get("name").equals("true") && !valueGiven.get("name").equals("false")) {
-                                valid = false;
-                                break;
+                        // Isto é válido?
+                        if (localVar.getType().getName().equals("boolean")) {
+                            for (var valueGiven : valuesGiven) {
+                                if (valueGiven.hasAttribute("name")) {
+                                    if (!valueGiven.get("name").equals("true") && !valueGiven.get("name").equals("false")) {
+                                        valid = false;
+                                        break;
+                                    }
+                                }
+                                type = "boolean";
                             }
-                            type = "boolean";
                         }
                     }
                 }
@@ -761,11 +781,13 @@ public class astOpValidator extends AnalysisVisitor {
         else if (operatorUsedKind.equals("VarRefExpr")) {
             // procuramos pela variável utilizada para estudar o seu tipo
             for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                if (localVar.getName().equals(operatorUsed.get("name"))) {
-                    // se não for do tipo booleano dá erro
-                    if (!localVar.getType().getName().equals("boolean")) {
-                        valid = false;
-                        break;
+                if (operatorUsed.hasAttribute("name")) {
+                    if (localVar.getName().equals(operatorUsed.get("name"))) {
+                        // se não for do tipo booleano dá erro
+                        if (!localVar.getType().getName().equals("boolean")) {
+                            valid = false;
+                            break;
+                        }
                     }
                 }
             }
@@ -880,17 +902,21 @@ public class astOpValidator extends AnalysisVisitor {
         if (localVariables != null) {
             for (var localVar : localVariables) {
                 if (assignElements.get(0).getKind().equals("VarRefExpr")) {
-                    if (localVar.getName().equals(assignElements.get(0).get("name"))) {
-                        assignStatm.getChildren().get(0).put("type", localVar.getType().getName());
-                        isDeclared = true;
-                        break;
+                    if (assignElements.get(0).hasAttribute("name")) {
+                        if (localVar.getName().equals(assignElements.get(0).get("name"))) {
+                            assignStatm.getChildren().get(0).put("type", localVar.getType().getName());
+                            isDeclared = true;
+                            break;
+                        }
                     }
                 }
                 else if (assignElements.get(0).getKind().equals("IntegerLiteral")) {
-                    if (localVar.getName().equals(assignElements.get(0).get("name"))) {
-                        assignStatm.getChildren().get(0).put("type", "int");
-                        isDeclared = true;
-                        break;
+                    if (assignElements.get(0).hasAttribute("name")) {
+                        if (localVar.getName().equals(assignElements.get(0).get("name"))) {
+                            assignStatm.getChildren().get(0).put("type", "int");
+                            isDeclared = true;
+                            break;
+                        }
                     }
                 }
             }
@@ -899,17 +925,21 @@ public class astOpValidator extends AnalysisVisitor {
         if (params != null) {
             for (var param : params) {
                 if (assignElements.get(0).getKind().equals("VarRefExpr")) {
-                    if (param.getName().equals(assignElements.get(0).get("name"))) {
-                        assignStatm.getChildren().get(0).put("type", param.getType().getName());
-                        isDeclared = true;
-                        break;
+                    if (assignElements.get(0).hasAttribute("name")) {
+                        if (param.getName().equals(assignElements.get(0).get("name"))) {
+                            assignStatm.getChildren().get(0).put("type", param.getType().getName());
+                            isDeclared = true;
+                            break;
+                        }
                     }
                 }
                 else if (assignElements.get(0).getKind().equals("IntegerLiteral")) {
-                    if (param.getName().equals(assignElements.get(0).get("name"))) {
-                        assignStatm.getChildren().get(0).put("type", "int");
-                        isDeclared = true;
-                        break;
+                    if (assignElements.get(0).hasAttribute("name")) {
+                        if (param.getName().equals(assignElements.get(0).get("name"))) {
+                            assignStatm.getChildren().get(0).put("type", "int");
+                            isDeclared = true;
+                            break;
+                        }
                     }
                 }
             }
@@ -918,17 +948,21 @@ public class astOpValidator extends AnalysisVisitor {
         if (fields != null) {
             for (var field : fields) {
                 if (assignElements.get(0).getKind().equals("VarRefExpr")) {
-                    if (field.getName().equals(assignElements.get(0).get("name"))) {
-                        assignStatm.getChildren().get(0).put("type", field.getType().getName());
-                        isDeclared = true;
-                        break;
+                    if (assignElements.get(0).hasAttribute("name")) {
+                        if (field.getName().equals(assignElements.get(0).get("name"))) {
+                            assignStatm.getChildren().get(0).put("type", field.getType().getName());
+                            isDeclared = true;
+                            break;
+                        }
                     }
                 }
                 else if (assignElements.get(0).getKind().equals("IntegerLiteral")) {
-                    if (field.getName().equals(assignElements.get(0).get("name"))) {
-                        assignStatm.getChildren().get(0).put("type", "int");
-                        isDeclared = true;
-                        break;
+                    if (assignElements.get(0).hasAttribute("name")) {
+                        if (field.getName().equals(assignElements.get(0).get("name"))) {
+                            assignStatm.getChildren().get(0).put("type", "int");
+                            isDeclared = true;
+                            break;
+                        }
                     }
                 }
             }
@@ -939,52 +973,56 @@ public class astOpValidator extends AnalysisVisitor {
         // Lidar com arrays
         for (var localVar : localsVar) {
             // assignElement.get(0) é sempre igual à variável na qual guardamos valores
-            if (localVar.getName().equals(assignElements.get(0).get("name"))) {
-                assignStatm.getChildren().get(0).put("type", localVar.getType().getName());
-                // Se for do tipo array só pode dar assign a elementos do tipo array
-                if (localVar.getType().isArray()) {
-                    assignStatm.getChildren().get(0).put("isArray", "true");
-                    assignStatm.put("isArray", "true");
-                    // Testar para quando o assign é feito com uma chamada a uma função que retorna um array
-                    if (assignElements.get(1).getKind().equals("FunctionCall")) {
-                        var functionCallReturn = symbolTable.getReturnType(assignElements.get(1).get("methodName"));
-                        var retType = functionCallReturn.getName();
-                        var isRetArray = functionCallReturn.isArray();
-                        // como estamos a verificar se uma variável array recebe um array na chamada a uma função, se no retorno não receber array dá erro
-                        if (!isRetArray) {
+            if (assignElements.get(0).hasAttribute("name")) {
+                if (localVar.getName().equals(assignElements.get(0).get("name"))) {
+                    assignStatm.getChildren().get(0).put("type", localVar.getType().getName());
+                    // Se for do tipo array só pode dar assign a elementos do tipo array
+                    if (localVar.getType().isArray()) {
+                        assignStatm.getChildren().get(0).put("isArray", "true");
+                        assignStatm.put("isArray", "true");
+                        // Testar para quando o assign é feito com uma chamada a uma função que retorna um array
+                        if (assignElements.get(1).getKind().equals("FunctionCall")) {
+                            var functionCallReturn = symbolTable.getReturnType(assignElements.get(1).get("methodName"));
+                            var retType = functionCallReturn.getName();
+                            var isRetArray = functionCallReturn.isArray();
+                            // como estamos a verificar se uma variável array recebe um array na chamada a uma função, se no retorno não receber array dá erro
+                            if (!isRetArray) {
+                                valid = false;
+                                break;
+                            }
+                            // se os tipos forem diferentes, dá erro
+                            if (!retType.equals(localVar.getType().getName())) {
+                                valid = false;
+                                break;
+                            }
+                            assignStatm.put("type", retType);
+                        }
+                        // Testar para quando o assign é feito com um array
+                        else if (!assignElements.get(1).getKind().equals("ArrayInit") && !assignElements.get(1).getKind().equals("NewArray")) {
                             valid = false;
                             break;
                         }
-                        // se os tipos forem diferentes, dá erro
-                        if (!retType.equals(localVar.getType().getName())) {
+                        assignStatm.put("type", localVar.getType().getName());
+                    }
+                    // Se não for do tipo array, não pode dar assign a elementos do tipo array
+                    else {
+                        if (assignElements.get(1).getKind().equals("ArrayInit") || assignElements.get(1).getKind().equals("NewArray")) {
                             valid = false;
                             break;
                         }
-                        assignStatm.put("type", retType);
-                    }
-                    // Testar para quando o assign é feito com um array
-                    else if (!assignElements.get(1).getKind().equals("ArrayInit") && !assignElements.get(1).getKind().equals("NewArray")) {
-                        valid = false;
-                        break;
-                    }
-                    assignStatm.put("type", localVar.getType().getName());
-                }
-                // Se não for do tipo array, não pode dar assign a elementos do tipo array
-                else {
-                    if (assignElements.get(1).getKind().equals("ArrayInit") || assignElements.get(1).getKind().equals("NewArray")) {
-                        valid = false;
-                        break;
-                    }
-                    // Ex: caso em que a = a[10] e 'a' é do tipo int
-                    // se a variável for do tipo array
-                    if (assignElements.get(1).getKind().equals("ArrayAccess")) {
-                        // e tiver o mesmo nome que a variável da direita, dá erro (Variável esquerda nesta fase já não é array)
-                        if (assignElements.get(1).getChildren().get(0).get("name").equals(assignElements.get(0).get("name"))) {
-                            valid = false;
-                            break;
+                        // Ex: caso em que a = a[10] e 'a' é do tipo int
+                        // se a variável for do tipo array
+                        if (assignElements.get(1).getKind().equals("ArrayAccess")) {
+                            // e tiver o mesmo nome que a variável da direita, dá erro (Variável esquerda nesta fase já não é array)
+                            if (assignElements.get(0).hasAttribute("name")) {
+                                if (assignElements.get(1).getChildren().get(0).get("name").equals(assignElements.get(0).get("name"))) {
+                                    valid = false;
+                                    break;
+                                }
+                            }
                         }
+                        assignStatm.put("type", localVar.getType().getName());
                     }
-                    assignStatm.put("type", localVar.getType().getName());
                 }
             }
         }
@@ -992,10 +1030,12 @@ public class astOpValidator extends AnalysisVisitor {
         // Para variáveis que dão assign a inteiros
         if (assignElements.get(1).getKind().equals("IntegerLiteral")) {
             for (var localVar : localsVar) {
-                if (localVar.getName().equals(assignElements.get(0).get("name"))) {
-                    var expectedValueType = localVar.getType().getName();
-                    if (!expectedValueType.equals("int")) {
-                        valid = false;
+                if (assignElements.get(0).hasAttribute("name")) {
+                    if (localVar.getName().equals(assignElements.get(0).get("name"))) {
+                        var expectedValueType = localVar.getType().getName();
+                        if (!expectedValueType.equals("int")) {
+                            valid = false;
+                        }
                     }
                 }
             }
@@ -1006,45 +1046,50 @@ public class astOpValidator extends AnalysisVisitor {
             for (var varLeft : localsVar) {
                 if (assignElements.get(0).get("name").equals(varLeft.getName())) {
                     // se for constante booleana
-                    if (assignElements.get(1).get("name").equals("true") || assignElements.get(1).get("name").equals("false")) {
-                        if (!varLeft.getType().getName().equals("boolean")) {
-                            valid = false;
-                            break;
+                    if (assignElements.get(1).hasAttribute("name")) {
+                        if (assignElements.get(1).get("name").equals("true") || assignElements.get(1).get("name").equals("false")) {
+                            if (!varLeft.getType().getName().equals("boolean")) {
+                                valid = false;
+                                break;
+                            }
                         }
                     }
 
                     // pesquisa-se pela variável que dá o valor
                     for (var varRight : localsVar) {
-                        if (assignElements.get(1).get("name").equals(varRight.getName())) {
-                            // se tiverem tipos diferentes
-                            if (!varLeft.getType().getName().equals(varRight.getType().getName())) {
-                                // se a variável da direita for um objeto da classe
-                                if (varRight.getType().getName().equals(symbolTable.getClassName())) {
-                                    // e se a variável da esquerda for um import
-                                    for (var importName : importNames) {
-                                        if (varLeft.getType().getName().equals(importName)) {
-                                            // se esse import não extender classe da variável da direita, dá erro
-                                            if (!varLeft.getType().getName().equals(symbolTable.getSuper())) {
-                                                valid = false;
+                        if (assignElements.get(1).hasAttribute("name")) {
+                            if (assignElements.get(1).get("name").equals(varRight.getName())) {
+                                // se tiverem tipos diferentes
+                                if (!varLeft.getType().getName().equals(varRight.getType().getName())) {
+                                    // se a variável da direita for um objeto da classe
+                                    if (varRight.getType().getName().equals(symbolTable.getClassName())) {
+                                        // e se a variável da esquerda for um import
+                                        for (var importName : importNames) {
+                                            if (varLeft.getType().getName().equals(importName)) {
+                                                // se esse import não extender classe da variável da direita, dá erro
+                                                if (!varLeft.getType().getName().equals(symbolTable.getSuper())) {
+                                                    valid = false;
+                                                }
+                                            }
+
+                                        }
+                                    } else {
+                                        // verificar se ambas as variáveis provêm de imports
+                                        var foundImportLeft = false;
+                                        var foundImportRight = false;
+                                        if (symbolTable.getImports() != null) {
+                                            for (var importName : symbolTable.getImports()) {
+                                                if (varLeft.getType().getName().equals(importName))
+                                                    foundImportLeft = true;
+                                                else if (varRight.getType().getName().equals(importName))
+                                                    foundImportRight = true;
+                                                if (foundImportLeft && foundImportRight) break;
                                             }
                                         }
-
-                                    }
-                                }
-                                else {
-                                    // verificar se ambas as variáveis provêm de imports
-                                    var foundImportLeft = false;
-                                    var foundImportRight = false;
-                                    if (symbolTable.getImports() != null) {
-                                        for (var importName : symbolTable.getImports()) {
-                                            if (varLeft.getType().getName().equals(importName)) foundImportLeft = true;
-                                            else if (varRight.getType().getName().equals(importName)) foundImportRight = true;
-                                            if (foundImportLeft && foundImportRight) break;
+                                        if ((foundImportLeft && !foundImportRight) || (!foundImportLeft && foundImportRight)) {
+                                            valid = false;
+                                            break;
                                         }
-                                    }
-                                    if ((foundImportLeft && !foundImportRight) || (!foundImportLeft && foundImportRight)) {
-                                        valid = false;
-                                        break;
                                     }
                                 }
                             }
@@ -1057,38 +1102,40 @@ public class astOpValidator extends AnalysisVisitor {
         else if (assignElements.get(1).getKind().equals("FunctionCall")) {
             var varThatCalledFunction = assignElements.get(1).getChildren().get(0);
             // se não for do tipo this, verifica-se se a variável existe no ficheiro
-            if (!varThatCalledFunction.get("name").equals("this")) {
-                // verificar se variável que chamou a função existe na classe ou nos imports
-                for (var importName : symbolTable.getImports()) {
-                    if (importName.equals(varThatCalledFunction.get("name"))) {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                        if (localVar.getName().equals(varThatCalledFunction.get("name"))) {
+            if (varThatCalledFunction.hasAttribute("name")) {
+                if (!varThatCalledFunction.get("name").equals("this")) {
+                    // verificar se variável que chamou a função existe na classe ou nos imports
+                    for (var importName : symbolTable.getImports()) {
+                        if (importName.equals(varThatCalledFunction.get("name"))) {
                             found = true;
                             break;
                         }
                     }
-                }
-                if (!found) {
-                    for (var param : symbolTable.getParameters(currentMethod)) {
-                        if (param.getName().equals(varThatCalledFunction.get("name"))) {
-                            found = true;
-                            break;
+                    if (!found) {
+                        for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                            if (localVar.getName().equals(varThatCalledFunction.get("name"))) {
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!found) {
+                        for (var param : symbolTable.getParameters(currentMethod)) {
+                            if (param.getName().equals(varThatCalledFunction.get("name"))) {
+                                found = true;
+                                break;
+                            }
                         }
                     }
                 }
-            }
-            // se for o caso do this, temos de verificar se a função chamada existe na classe
-            else {
-                if (symbolTable.getMethods() != null) {
-                    for (var methodName : symbolTable.getMethods()) {
-                        if (methodName.equals(assignElements.get(1).get("methodName"))) {
-                            found = true;
-                            break;
+                // se for o caso do this, temos de verificar se a função chamada existe na classe
+                else {
+                    if (symbolTable.getMethods() != null) {
+                        for (var methodName : symbolTable.getMethods()) {
+                            if (methodName.equals(assignElements.get(1).get("methodName"))) {
+                                found = true;
+                                break;
+                            }
                         }
                     }
                 }
@@ -1157,10 +1204,12 @@ public class astOpValidator extends AnalysisVisitor {
         for (var method : methods) {
             if (!returnStatm.getChildren("FunctionCall").isEmpty()) {
                 // se encontrar a função chamada
-                if (method.get("methodName").equals(returnStatm.getChildren("FunctionCall").get(0).get("methodName"))) {
-                    boolean hasVarArgs = !method.getDescendants("VarArgs").isEmpty();
-                    if (hasVarArgs) valid = false;
-                    break;
+                if (returnStatm.getChildren("FunctionCall").get(0).hasAttribute("methodName")) {
+                    if (method.get("methodName").equals(returnStatm.getChildren("FunctionCall").get(0).get("methodName"))) {
+                        boolean hasVarArgs = !method.getDescendants("VarArgs").isEmpty();
+                        if (hasVarArgs) valid = false;
+                        break;
+                    }
                 }
             }
         }
@@ -1184,9 +1233,11 @@ public class astOpValidator extends AnalysisVisitor {
                 if (localVariables != null) {
                     // procura nas variáveis locais se existe
                     for (var localVar : localVariables) {
-                        if (localVar.getName().equals(returnElement.get("name"))) {
-                            found = true;
-                            break;
+                        if (returnElement.hasAttribute("name")) {
+                            if (localVar.getName().equals(returnElement.get("name"))) {
+                                found = true;
+                                break;
+                            }
                         }
                     }
                 }
@@ -1196,26 +1247,32 @@ public class astOpValidator extends AnalysisVisitor {
                 if (found || parameters == null) continue;
                 // procura nos parametros da função atual se a variável existe
                 for (var param : parameters) {
-                    if (param.getName().equals(returnElement.get("name"))) {
-                        found = true;
-                        break;
+                    if (returnElement.hasAttribute("name")) {
+                        if (param.getName().equals(returnElement.get("name"))) {
+                            found = true;
+                            break;
+                        }
                     }
                 }
                 if (!found) {
                     if (symbolTable.getFields() != null) {
                         for (var field : symbolTable.getFields()) {
-                            if (field.getName().equals(returnElement.get("name"))) {
-                                found = true;
-                                break;
+                            if (returnElement.hasAttribute("name")) {
+                                if (field.getName().equals(returnElement.get("name"))) {
+                                    found = true;
+                                    break;
+                                }
                             }
                         }
                     }
                 }
                 if (!found) {
                     if (returnElement.hasAttribute("name")) {
-                        if (returnElement.get("name").equals("true") || returnElement.get("name").equals("false")) {
-                            found = true;
-                            break;
+                        if (returnElement.hasAttribute("name")) {
+                            if (returnElement.get("name").equals("true") || returnElement.get("name").equals("false")) {
+                                found = true;
+                                break;
+                            }
                         }
                     }
                 }
@@ -1235,16 +1292,20 @@ public class astOpValidator extends AnalysisVisitor {
             if (methods != null) {
                 // extraio o JmmNode da função chamada para analisar o valor de retorno desta
                 for (var method : methods) {
-                    if (returnElements.get(0).get("methodName").equals(method.get("methodName"))) {
-                        calledFunction = method;
-                        break;
+                    if (returnElements.get(0).hasAttribute("methodName") && method.hasAttribute("methodName")) {
+                        if (returnElements.get(0).get("methodName").equals(method.get("methodName"))) {
+                            calledFunction = method;
+                            break;
+                        }
                     }
                 }
                 // extraio o JmmNode da função atual, onde se faz a chamada de outra função
                 for (var method : methods) {
-                    if (method.get("methodName").equals(currentMethod)) {
-                        currentFunction = method;
-                        break;
+                    if (method.hasAttribute("methodName")) {
+                        if (method.get("methodName").equals(currentMethod)) {
+                            currentFunction = method;
+                            break;
+                        }
                     }
                 }
             }
@@ -1273,18 +1334,22 @@ public class astOpValidator extends AnalysisVisitor {
                         if (symbolTable.getLocalVariables(currentMethod) != null) {
                             for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
                                 // i + 1 para avançar a variável 'a' em a.foo(b)
-                                if (localVar.getName().equals(paramsGiven.get(i+1).get("name"))) {
-                                    varUsed = localVar;
-                                    break;
+                                if (paramsGiven.get(i+1).hasAttribute("name")) {
+                                    if (localVar.getName().equals(paramsGiven.get(i + 1).get("name"))) {
+                                        varUsed = localVar;
+                                        break;
+                                    }
                                 }
                             }
                         }
                         if (symbolTable.getParameters(currentMethod) != null) {
                             for (var param : symbolTable.getParameters(currentMethod)) {
                                 // i + 1 para avançar a variável 'a' em a.foo(b)
-                                if (param.getName().equals(paramsGiven.get(i+1).get("name"))) {
-                                    varUsed = param;
-                                    break;
+                                if (paramsGiven.get(i+1).hasAttribute("name")) {
+                                    if (param.getName().equals(paramsGiven.get(i + 1).get("name"))) {
+                                        varUsed = param;
+                                        break;
+                                    }
                                 }
                             }
                         }
@@ -1314,12 +1379,13 @@ public class astOpValidator extends AnalysisVisitor {
                     if (localVariables != null) {
                         for (var localVar : localVariables) {
                             // verifica se é variável local da função
-                            if (localVar.getName().equals(returnElement.get("name"))) {
-                                // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
-                                if (!localVar.getType().getName().equals("int") || localVar.getType().isArray()) {
-                                    valid = false;
+                            if (returnElement.hasAttribute("name")) {
+                                if (localVar.getName().equals(returnElement.get("name"))) {
+                                    // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
+                                    if (!localVar.getType().getName().equals("int") || localVar.getType().isArray()) {
+                                        valid = false;
+                                    } else returnStatm.put("type", "int");
                                 }
-                                else returnStatm.put("type", "int");
                             }
                         }
                     }
@@ -1328,13 +1394,14 @@ public class astOpValidator extends AnalysisVisitor {
                         if (symbolTable.getFields() != null) {
                             for (var field : symbolTable.getFields()) {
                                 // verifica se é field da classe
-                                if (field.getName().equals(returnElement.get("name"))) {
-                                    // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
-                                    if (!field.getType().getName().equals("int") || field.getType().isArray()) {
-                                        returnStatm.put("type", "int");
-                                        valid = false;
+                                if (returnElement.hasAttribute("name")) {
+                                    if (field.getName().equals(returnElement.get("name"))) {
+                                        // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
+                                        if (!field.getType().getName().equals("int") || field.getType().isArray()) {
+                                            returnStatm.put("type", "int");
+                                            valid = false;
+                                        } else returnStatm.put("type", "int");
                                     }
-                                    else returnStatm.put("type", "int");
                                 }
                             }
                         }
@@ -1344,13 +1411,14 @@ public class astOpValidator extends AnalysisVisitor {
                         if (symbolTable.getParameters(currentMethod) != null) {
                             for (var param : symbolTable.getParameters(currentMethod)) {
                                 // verifica se é parametro da função atual
-                                if (param.getName().equals(returnElement.get("name"))) {
-                                    // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
-                                    if (!param.getType().getName().equals("int") || param.getType().isArray()) {
-                                        returnStatm.put("type", "int");
-                                        valid = false;
+                                if (returnElement.hasAttribute("name")) {
+                                    if (param.getName().equals(returnElement.get("name"))) {
+                                        // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
+                                        if (!param.getType().getName().equals("int") || param.getType().isArray()) {
+                                            returnStatm.put("type", "int");
+                                            valid = false;
+                                        } else returnStatm.put("type", "int");
                                     }
-                                    else returnStatm.put("type", "int");
                                 }
                             }
                         }
@@ -1386,9 +1454,11 @@ public class astOpValidator extends AnalysisVisitor {
             // verificar se existe o arrayVar no ficheiro
             if (symbolTable.getLocalVariables(currentMethod) != null) {
                 for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                    if (localVar.getName().equals(arrayVar.get("name"))) {
-                        foundArrayDecl = true;
-                        arrayVarSymbol = localVar;
+                    if (arrayVar.hasAttribute("name")) {
+                        if (localVar.getName().equals(arrayVar.get("name"))) {
+                            foundArrayDecl = true;
+                            arrayVarSymbol = localVar;
+                        }
                     }
                 }
             }
@@ -1396,9 +1466,11 @@ public class astOpValidator extends AnalysisVisitor {
             if (!foundArrayDecl) {
                 if (symbolTable.getParameters(currentMethod) != null) {
                     for (var param : symbolTable.getParameters(currentMethod)) {
-                        if (param.getName().equals(arrayVar.get("name"))) {
-                            foundArrayDecl = true;
-                            arrayVarSymbol = param;
+                        if (arrayVar.hasAttribute("name")) {
+                            if (param.getName().equals(arrayVar.get("name"))) {
+                                foundArrayDecl = true;
+                                arrayVarSymbol = param;
+                            }
                         }
                     }
                 }
@@ -1407,9 +1479,11 @@ public class astOpValidator extends AnalysisVisitor {
             if (!foundArrayDecl) {
                 if (symbolTable.getFields() != null) {
                     for (var field : symbolTable.getFields()) {
-                        if (field.getName().equals(arrayVar.get("name"))) {
-                            foundArrayDecl = true;
-                            arrayVarSymbol = field;
+                        if (arrayVar.hasAttribute("name")) {
+                            if (field.getName().equals(arrayVar.get("name"))) {
+                                foundArrayDecl = true;
+                                arrayVarSymbol = field;
+                            }
                         }
                     }
                 }
@@ -1431,18 +1505,22 @@ public class astOpValidator extends AnalysisVisitor {
                     // verificar se existe a variável index no ficheiro
                     if (symbolTable.getLocalVariables(currentMethod) != null) {
                         for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                            if (localVar.getName().equals(arrayIndex.get("name"))) {
-                                foundArrayIndex = true;
-                                arrayIndexSymbol = localVar;
+                            if (arrayIndex.hasAttribute("name")) {
+                                if (localVar.getName().equals(arrayIndex.get("name"))) {
+                                    foundArrayIndex = true;
+                                    arrayIndexSymbol = localVar;
+                                }
                             }
                         }
                     }
                     if (!foundArrayIndex) {
                         if (symbolTable.getParameters(currentMethod) != null) {
                             for (var param : symbolTable.getParameters(currentMethod)) {
-                                if (param.getName().equals(arrayIndex.get("name"))) {
-                                    foundArrayIndex = true;
-                                    arrayIndexSymbol = param;
+                                if (arrayIndex.hasAttribute("name")) {
+                                    if (param.getName().equals(arrayIndex.get("name"))) {
+                                        foundArrayIndex = true;
+                                        arrayIndexSymbol = param;
+                                    }
                                 }
                             }
                         }
@@ -1450,9 +1528,11 @@ public class astOpValidator extends AnalysisVisitor {
                     if (!foundArrayIndex) {
                         if (symbolTable.getFields() != null) {
                             for (var field : symbolTable.getFields()) {
-                                if (field.getName().equals(arrayIndex.get("name"))) {
-                                    foundArrayIndex = true;
-                                    arrayIndexSymbol = field;
+                                if (arrayIndex.hasAttribute("name")) {
+                                    if (field.getName().equals(arrayIndex.get("name"))) {
+                                        foundArrayIndex = true;
+                                        arrayIndexSymbol = field;
+                                    }
                                 }
                             }
                         }
@@ -1486,8 +1566,10 @@ public class astOpValidator extends AnalysisVisitor {
                     } else if (returnElement.get(1).equals("true") || returnElement.get(1).equals("false")) {
                         for (var method : methods) {
                             if (method.get("methodName").equals(currentMethod)) {
-                                var expectedFuncRetType = method.getChildren().get(0).get("value");
-                                if (!expectedFuncRetType.equals("boolean")) valid = false;
+                                if (method.getChildren().get(0).hasAttribute("value")) {
+                                    var expectedFuncRetType = method.getChildren().get(0).get("value");
+                                    if (!expectedFuncRetType.equals("boolean")) valid = false;
+                                }
                             }
                         }
                         if (valid) return null;
@@ -1520,9 +1602,11 @@ public class astOpValidator extends AnalysisVisitor {
         // verificar se existem métodos repetidos
         for (int i = 0; i < methods.size(); i++) {
             for (int j = i + 1; j < methods.size(); j++) {
-                if (methods.get(i).get("methodName").equals(methods.get(j).get("methodName"))) {
-                    valid = false;
-                    break;
+                if (methods.get(i).hasAttribute("methodName") && methods.get(j).hasAttribute("methodName")) {
+                    if (methods.get(i).get("methodName").equals(methods.get(j).get("methodName"))) {
+                        valid = false;
+                        break;
+                    }
                 }
             }
         }
@@ -1543,6 +1627,14 @@ public class astOpValidator extends AnalysisVisitor {
         if (table.getLocalVariables(currentMethod) != null) {
             for (var localVar : table.getLocalVariables(currentMethod)) {
                 if (localVar.getName().equals("length")) {
+                    valid = false;
+                    break;
+                }
+            }
+        }
+        if (table.getFields() != null) {
+            for (var field : table.getFields()) {
+                if (field.getName().equals("length")) {
                     valid = false;
                     break;
                 }
@@ -1572,16 +1664,18 @@ public class astOpValidator extends AnalysisVisitor {
         // verificar se tem return para o caso de uma função que precise de retornar um tipo
         if (method.getChildren().get(0).hasAttribute("value")) {
             int numReturns = method.getDescendants("ReturnStmt").size();
-            String funcRetType = method.getChildren().get(0).get("value");
-            if (funcRetType.equals("int") || funcRetType.equals("boolean")) {
-                if (numReturns == 0) valid = false;
+            if (method.getChildren().get(0).hasAttribute("value")) {
+                String funcRetType = method.getChildren().get(0).get("value");
+                if (funcRetType.equals("int") || funcRetType.equals("boolean")) {
+                    if (numReturns == 0) valid = false;
+                }
             }
         }
 
         // validar a estrutura do método main
         if (currentMethod.equals("main")) {
             // só pode ter um node Param como node filho
-            if (method.getChildren("Void").size() > 0) valid = false;
+            if (!method.getChildren("Void").isEmpty()) valid = false;
             if (method.getChildren("Param").size() > 1) valid = false;
 
             var mainParam = method.getChildren("Param").get(0);
@@ -1603,7 +1697,12 @@ public class astOpValidator extends AnalysisVisitor {
             var functionCalls = method.getDescendants("VarRefExpr");
             if (!functionCalls.isEmpty()) {
                 for (var functionCall : functionCalls) {
-                    if (functionCall.get("name").equals("this")) valid = false;
+                    if (functionCall.hasAttribute("name")) {
+                        if (functionCall.get("name").equals("this")) {
+                            valid = false;
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -1634,30 +1733,36 @@ public class astOpValidator extends AnalysisVisitor {
                         // descobrir o tipo da variável
                         if (table.getParameters(currentMethod) != null) {
                             for (var param : table.getParameters(currentMethod)) {
-                                if (param.getName().equals(returnNodeKind.get("name"))) {
-                                    if (!returnType.getName().equals(param.getType().getName())) {
-                                        valid = false;
-                                        break;
+                                if (returnNodeKind.hasAttribute("name")) {
+                                    if (param.getName().equals(returnNodeKind.get("name"))) {
+                                        if (!returnType.getName().equals(param.getType().getName())) {
+                                            valid = false;
+                                            break;
+                                        }
                                     }
                                 }
                             }
                         }
                         if (table.getLocalVariables(currentMethod) != null) {
                             for (var localVar : table.getLocalVariables(currentMethod)) {
-                                if (localVar.getName().equals(returnNodeKind.get("name"))) {
-                                    if (!returnType.getName().equals(localVar.getType().getName())) {
-                                        valid = false;
-                                        break;
+                                if (returnNodeKind.hasAttribute("name")) {
+                                    if (localVar.getName().equals(returnNodeKind.get("name"))) {
+                                        if (!returnType.getName().equals(localVar.getType().getName())) {
+                                            valid = false;
+                                            break;
+                                        }
                                     }
                                 }
                             }
                         }
                         if (table.getFields() != null) {
                             for (var field : table.getFields()) {
-                                if (field.getName().equals(returnNodeKind.get("name"))) {
-                                    if (!returnType.getName().equals(field.getType().getName())) {
-                                        valid = false;
-                                        break;
+                                if (returnNodeKind.hasAttribute("name")) {
+                                    if (field.getName().equals(returnNodeKind.get("name"))) {
+                                        if (!returnType.getName().equals(field.getType().getName())) {
+                                            valid = false;
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -1683,7 +1788,9 @@ public class astOpValidator extends AnalysisVisitor {
             method.put("isArray", "true");
         }
         else {
-            method.put("type", method.getChildren().get(0).get("value"));
+            if (method.getChildren().get(0).hasAttribute("value")) {
+                method.put("type", method.getChildren().get(0).get("value"));
+            }
         }
 
        var methodChildren = method.getChildren();
@@ -1699,20 +1806,24 @@ public class astOpValidator extends AnalysisVisitor {
                    // Se existirem, percorremos todas as chamadas feitas a funções
                    for (var functionCall : assignment.getChildren("FunctionCall")) {
                        // percorremos as variáveis locais do método atual
-                       for (var variableCallingFunction : assignment.getParent().getChildren("VarDecl")) {
-                           var variableDecl = functionCall.getParent().getChildren("VarRefExpr").get(0).get("name");
-                           // se encontrarmos a variável que chama a função
-                           if (variableCallingFunction.get("name").equals(variableDecl)) {
-                               // confirmar se a variável contém um tipo de valor
-                               if (variableCallingFunction.getChildren().get(0).hasAttribute("value")) {
-                                   // guardamos a function call e o número de parametros recebidos pela função
-                                   Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
-                                   functionsCalled.add(pairFunc);
-                               }
-                               // se variável for um array
-                               else if (!variableCallingFunction.getChildren("Array").isEmpty()) {
-                                   Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
-                                   functionsCalled.add(pairFunc);
+                       if (!assignment.getParent().getChildren("VarDecl").isEmpty()) {
+                           for (var variableCallingFunction : assignment.getParent().getChildren("VarDecl")) {
+                               if (functionCall.getParent().getChildren("VarRefExpr").get(0).hasAttribute("name")) {
+                                   var variableDecl = functionCall.getParent().getChildren("VarRefExpr").get(0).get("name");
+                                   // se encontrarmos a variável que chama a função
+                                   if (variableCallingFunction.get("name").equals(variableDecl)) {
+                                       // confirmar se a variável contém um tipo de valor
+                                       if (variableCallingFunction.getChildren().get(0).hasAttribute("value")) {
+                                           // guardamos a function call e o número de parametros recebidos pela função
+                                           Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
+                                           functionsCalled.add(pairFunc);
+                                       }
+                                       // se variável for um array
+                                       else if (!variableCallingFunction.getChildren("Array").isEmpty()) {
+                                           Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
+                                           functionsCalled.add(pairFunc);
+                                       }
+                                   }
                                }
                            }
                        }
@@ -1736,7 +1847,7 @@ public class astOpValidator extends AnalysisVisitor {
                         int parametersNumber = method.getChildren("Param").size();
 
                         var varArgsNodes = method.getDescendants("VarArgs");
-                        numVarArgsCalled = method.getDescendants("VarArgs").size();
+                        numVarArgsCalled = varArgsNodes.size();
 
                         // se existir pelo menos um parametro varargs
                         if (numVarArgsCalled > 0) {
@@ -1750,6 +1861,7 @@ public class astOpValidator extends AnalysisVisitor {
                                 numParamsGiven++;
                             }
                             var numParamsExpected = method.getChildren("Param").size();
+                            // se receber menos que os esperados, dá erro
                             if (numParamsExpected > numParamsGiven) {
                                 valid = false;
                                 break;
@@ -1768,23 +1880,29 @@ public class astOpValidator extends AnalysisVisitor {
                                     // se a variável que chamou a função é um inteiro, o return de um vargars tem que ser um array access
                                     if (variableThatCalledFunctionKind.equals("Integer")) {
                                         // tipo da variável que guarda o valor de return do método a analisar agora
-                                        var variableThatCalledFunctionType = functionCalled.b.getChildren().get(0).get("value");
+                                        if (functionCalled.b.getChildren().get(0).hasAttribute("value")) {
+                                            var variableThatCalledFunctionType = functionCalled.b.getChildren().get(0).get("value");
 
-                                        // se os tipos de retorno forem diferentes ou se não for um array access, dá erro
-                                        if (!returnType.getName().equals(variableThatCalledFunctionType)) valid = false;
-                                        if (!child.getChildren().get(0).getKind().equals("ArrayAccess")) valid = false;
+                                            // se os tipos de retorno forem diferentes ou se não for um array access, dá erro
+                                            if (!returnType.getName().equals(variableThatCalledFunctionType))
+                                                valid = false;
+                                            if (!child.getChildren().get(0).getKind().equals("ArrayAccess"))
+                                                valid = false;
+                                        }
                                     }
                                     // se a variável que chamou a função é um array, o return de um vargars pode o ser parâmetro do varargs
                                     else if (variableThatCalledFunctionKind.equals("Array")) {
                                         boolean found = false;
                                         for (var returnElement : child.getChildren()) {
                                             // se o retorno for o parametro vargars (parametro é automaticamento array)
-                                            for (var param : table.getParameters(currentMethod)) {
-                                                if (found) break;
-                                                if (returnElement.hasAttribute("name")) {
-                                                    if (returnElement.get("name").equals(param.getName())) {
-                                                        found = true;
-                                                        break;
+                                            if (table.getParameters(currentMethod) != null) {
+                                                for (var param : table.getParameters(currentMethod)) {
+                                                    if (found) break;
+                                                    if (returnElement.hasAttribute("name")) {
+                                                        if (returnElement.get("name").equals(param.getName())) {
+                                                            found = true;
+                                                            break;
+                                                        }
                                                     }
                                                 }
                                             }
@@ -1841,10 +1959,14 @@ public class astOpValidator extends AnalysisVisitor {
         if (table.getFields().stream()
                 .anyMatch(param -> param.getName().equals(varRefName))) {
             if (varDecl.getChildren().get(0).getKind().equals("Array")) {
-                varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+                if (varDecl.getChildren().get(0).getChildren().get(0).hasAttribute("value")) {
+                    varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+                }
             }
             else {
-                varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                if (varDecl.getChildren().get(0).hasAttribute("value")) {
+                    varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                }
             }
             return null;
         }
@@ -1853,10 +1975,14 @@ public class astOpValidator extends AnalysisVisitor {
         if (table.getParameters(currentMethod).stream()
                 .anyMatch(param -> param.getName().equals(varRefName))) {
             if (varDecl.getChildren().get(0).getKind().equals("Array")) {
-                varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+                if (varDecl.getChildren().get(0).getChildren().get(0).hasAttribute("value")) {
+                    varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+                }
             }
             else {
-                varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                if (varDecl.getChildren().get(0).hasAttribute("value")) {
+                    varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                }
             }
             return null;
         }
@@ -1867,13 +1993,19 @@ public class astOpValidator extends AnalysisVisitor {
                 table.getImports().stream().anyMatch(imp -> imp.equals(varRefName))
                 ) {
             if (varDecl.getChildren().get(0).getKind().equals("Array")) {
-                varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+                if (varDecl.getChildren().get(0).getChildren().get(0).hasAttribute("value")) {
+                    varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+                }
             }
             else if (varDecl.getChildren().get(0).getKind().equals("Var")) {
-                varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                if (varDecl.getChildren().get(0).hasAttribute("value")) {
+                    varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                }
             }
             else {
-                varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                if (varDecl.getChildren().get(0).hasAttribute("value")) {
+                    varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                }
             }
             return null;
         }
