@@ -1327,7 +1327,19 @@ public class astOpValidator extends AnalysisVisitor {
         }
 
         boolean found = false;
-        // Verificar se as variáveis de retorno existem
+
+        var funcType = returnStatm.getParent().getChildren().get(0);
+        boolean isArray = false;
+        String funcTypeExpected = "";
+        if (funcType.getKind().equals("Array")) {
+            isArray = true;
+            funcTypeExpected = "int";
+        }
+        else if (funcType.hasAttribute("value")) {
+            funcTypeExpected = funcType.get("value");
+        }
+
+        // Verificar se as variáveis de retorno existem e se coincidem com o tipo esperado de retorno da função
         for (var returnElement : returnElements) {
             found = false;
             // se for variável
@@ -1338,6 +1350,8 @@ public class astOpValidator extends AnalysisVisitor {
                         if (returnElement.hasAttribute("name")) {
                             if (localVar.getName().equals(returnElement.get("name"))) {
                                 found = true;
+                                if ((localVar.getType().isArray() && !isArray) || (!localVar.getType().isArray() && isArray)) valid = false;
+                                if (!localVar.getType().getName().equals(funcTypeExpected)) valid = false;
                                 break;
                             }
                         }
@@ -1345,13 +1359,15 @@ public class astOpValidator extends AnalysisVisitor {
                 }
 
                 // se já encontrou, verifica se a próxima variável no return, se existir, é declarada
-                // se a função não tiver parametros, não vale a pena verificá-los
+                // se a função não tiver parametros, é escusado verificá-los
                 if (found || parameters == null) continue;
                 // procura nos parametros da função atual se a variável existe
                 for (var param : parameters) {
                     if (returnElement.hasAttribute("name")) {
                         if (param.getName().equals(returnElement.get("name"))) {
                             found = true;
+                            if ((param.getType().isArray() && !isArray) || (!param.getType().isArray() && isArray)) valid = false;
+                            if (!param.getType().getName().equals(funcTypeExpected)) valid = false;
                             break;
                         }
                     }
@@ -1362,6 +1378,8 @@ public class astOpValidator extends AnalysisVisitor {
                             if (returnElement.hasAttribute("name")) {
                                 if (field.getName().equals(returnElement.get("name"))) {
                                     found = true;
+                                    if ((field.getType().isArray() && !isArray) || (!field.getType().isArray() && isArray)) valid = false;
+                                    if (!field.getType().getName().equals(funcTypeExpected)) valid = false;
                                     break;
                                 }
                             }
@@ -1373,6 +1391,7 @@ public class astOpValidator extends AnalysisVisitor {
                         if (returnElement.hasAttribute("name")) {
                             if (returnElement.get("name").equals("true") || returnElement.get("name").equals("false")) {
                                 found = true;
+                                if (!funcTypeExpected.equals("boolean")) valid = false;
                                 break;
                             }
                         }
@@ -1427,7 +1446,7 @@ public class astOpValidator extends AnalysisVisitor {
                 }
                 var paramsExpected = calledFunction.getChildren("Param");
                 var numParamsExpected = paramsExpected.size();
-                // subtrai-se 1 porque corresponde à variável que chama a função. Ex: a variável 'a' em a.foo(b) -> no contador só deve contar 'b'
+                // Subtrai-se 1 porque corresponde à variável que chama a função. Ex: a variável 'a' em a.foo(b) -> no contador só deve contar 'b'
                 if ((numberParamsGiven - 1) != numParamsExpected) valid = false;
 
                 // se for dado um elemento na chamada da função inválido tem que dar erro
