@@ -1512,6 +1512,11 @@ public class astOpValidator extends AnalysisVisitor {
         var returnNodes = method.getDescendants("ReturnStmt");
         if (returnNodes.size() > 1) valid = false;
 
+        // verificar se n tem return no tipo void
+        if (!method.getDescendants("Void").isEmpty()) {
+            if (!returnNodes.isEmpty()) valid = false;
+        }
+
         // verificar se o return não é o último return existente
         var descendents = method.getDescendants();
         // se não for a função main
