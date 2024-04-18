@@ -364,12 +364,16 @@ public class JasminGenerator {
         // imports
         var first = (Operand) callInstruction.getOperands().get(0);
         var firstName = ((ClassType) first.getType()).getName();
-        for (var importClass : ollirResult.getOllirClass().getImports()) {
-            if (importClass.endsWith(className)) {
-                firstName.replaceAll("\\.", "/");
+        if (firstName.equals("this")){
+            code.append(className);
+        } else {
+            for (var importClass : ollirResult.getOllirClass().getImports()) {
+                if (importClass.endsWith(className)) {
+                    firstName.replaceAll("\\.", "/");
+                }
             }
+            code.append(firstName).append("/");
         }
-        code.append(firstName).append("/");
 
         // ver o que é este elemento
         var methodName = ((LiteralElement) callInstruction.getMethodName()).getLiteral().replace("\"", "");
