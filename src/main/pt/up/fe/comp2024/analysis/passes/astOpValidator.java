@@ -1508,6 +1508,16 @@ public class astOpValidator extends AnalysisVisitor {
             }
         }
 
+        // verificar se existe uma variável com o nome reservado length
+        if (table.getLocalVariables(currentMethod) != null) {
+            for (var localVar : table.getLocalVariables(currentMethod)) {
+                if (localVar.getName().equals("length")) {
+                    valid = false;
+                    break;
+                }
+            }
+        }
+
         // verificar se tem mais que um return
         var returnNodes = method.getDescendants("ReturnStmt");
         if (returnNodes.size() > 1) valid = false;
