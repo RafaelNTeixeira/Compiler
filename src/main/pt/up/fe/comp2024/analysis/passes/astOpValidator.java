@@ -1632,6 +1632,14 @@ public class astOpValidator extends AnalysisVisitor {
                 }
             }
         }
+        if (table.getFields() != null) {
+            for (var field : table.getFields()) {
+                if (field.getName().equals("length")) {
+                    valid = false;
+                    break;
+                }
+            }
+        }
 
         // verificar se tem mais que um return
         var returnNodes = method.getDescendants("ReturnStmt");
