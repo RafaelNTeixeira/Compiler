@@ -347,9 +347,11 @@ public class astOpValidator extends AnalysisVisitor {
         var varUsedOnNode = lengthNode.getChildren().get(0);
         // Verificar se length é chamada em variáveis locais
         for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-            if (localVar.getName().equals(varUsedOnNode.get("name"))) {
-                if (!localVar.getType().isArray()) {
-                    valid = false;
+            if (varUsedOnNode.hasAttribute("name")) {
+                if (localVar.getName().equals(varUsedOnNode.get("name"))) {
+                    if (!localVar.getType().isArray()) {
+                        valid = false;
+                    }
                 }
             }
         }
@@ -669,30 +671,32 @@ public class astOpValidator extends AnalysisVisitor {
         // Ex: new int[2]
         // verificar se os atributos dentro de [] são válidos
         var valuesGiven = arrayInitNode.getChildren();
-        var varStoring = arrayInitNode.getParent().getChildren("VarRefExpr").get(0);
-        // Se for uma variável local
+        if (!arrayInitNode.getParent().getChildren("VarRefExpr").isEmpty()) {
+            var varStoring = arrayInitNode.getParent().getChildren("VarRefExpr").get(0);
+            // Se for uma variável local
 
-        for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-            // se a variável que está a guardar for array é aceite
-            if (localVar.getName().equals(varStoring.get("name")) && localVar.getType().isArray()) {
-                // se esta for do tipo int
-                if (localVar.getType().getName().equals("int")) {
-                    for (var valueGiven : valuesGiven) {
-                        if (!valueGiven.getKind().equals("IntegerLiteral")) {
-                            valid = false;
-                            break;
+            for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                // se a variável que está a guardar for array é aceite
+                if (localVar.getName().equals(varStoring.get("name")) && localVar.getType().isArray()) {
+                    // se esta for do tipo int
+                    if (localVar.getType().getName().equals("int")) {
+                        for (var valueGiven : valuesGiven) {
+                            if (!valueGiven.getKind().equals("IntegerLiteral")) {
+                                valid = false;
+                                break;
+                            }
+                            type = "int";
                         }
-                        type = "int";
                     }
-                }
-                // Isto é válido?
-                if (localVar.getType().getName().equals("boolean")) {
-                    for (var valueGiven : valuesGiven) {
-                        if (!valueGiven.get("name").equals("true") && !valueGiven.get("name").equals("false")) {
-                            valid = false;
-                            break;
+                    // Isto é válido?
+                    if (localVar.getType().getName().equals("boolean")) {
+                        for (var valueGiven : valuesGiven) {
+                            if (!valueGiven.get("name").equals("true") && !valueGiven.get("name").equals("false")) {
+                                valid = false;
+                                break;
+                            }
+                            type = "boolean";
                         }
-                        type = "boolean";
                     }
                 }
             }
