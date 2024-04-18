@@ -1755,6 +1755,9 @@ public class astOpValidator extends AnalysisVisitor {
         if (!method.getDescendants("Void").isEmpty()) {
             if (!returnNodes.isEmpty()) valid = false;
         }
+        else {
+            if (returnNodes.isEmpty()) valid = false;
+        }
 
         // verificar se o return não é o último return existente
         var descendents = method.getDescendants();
