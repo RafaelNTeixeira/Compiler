@@ -979,6 +979,11 @@ public class astOpValidator extends AnalysisVisitor {
         boolean found = false;
         boolean isDeclared = false;
 
+        // verificar se à esquerda tem variável
+        if (!assignStatm.getChildren().get(0).getKind().equals("VarRefExpr")) {
+            valid = false;
+        }
+
         // verificar se no caso de variáveis, estas são declaradas
         var localVariables = symbolTable.getLocalVariables(currentMethod);
         if (localVariables != null) {
