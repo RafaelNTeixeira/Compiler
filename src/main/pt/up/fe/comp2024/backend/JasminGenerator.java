@@ -420,7 +420,7 @@ public class JasminGenerator {
             code.append(firstName);
         }
 
-        code.append("/");
+        //code.append("/");
         // ver o que é este elemento
         var methodName = ((LiteralElement) callInstruction.getMethodName()).getLiteral().replace("\"", "");
         code.append(methodName);
