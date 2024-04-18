@@ -2035,6 +2035,52 @@ public class astOpValidator extends AnalysisVisitor {
     }
 
     private Void visitVarDecl(JmmNode varDecl, SymbolTable table) {
+
+        // verificar se o id da declaração existe
+        boolean correctID = false;
+
+        if (varDecl.getChildren().get(0).getKind().equals("Array")) {
+            var arrayNode = varDecl.getChildren().get(0);
+            if (arrayNode.getChildren().get(0).hasAttribute("value")) {
+                if (arrayNode.getChildren().get(0).get("value").equals("int")) {
+                    correctID = true;
+                }
+            }
+        }
+
+        var idVarDecl = varDecl.getChildren().get(0);
+        if (idVarDecl.hasAttribute("value")) {
+            if (idVarDecl.get("value").equals("int") || idVarDecl.get("value").equals("boolean")) {
+                correctID = true;
+            }
+
+            if (!correctID) {
+                if (table.getImports() != null) {
+                    for (var importName : table.getImports()) {
+                        if (importName.equals(idVarDecl.get("value"))) {
+                            correctID = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!correctID) {
+                if (table.getClassName().equals(idVarDecl.get("value"))) correctID = true;
+            }
+        }
+
+        if (!correctID) {
+            var message = String.format("Invalid id declaration '%s'.", varDecl);
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(varDecl),
+                    NodeUtils.getColumn(varDecl),
+                    message,
+                    null)
+            );
+        }
+
         // verificar se existem variáveis repetidas
         if (table.getLocalVariables(currentMethod) != null) {
             var localVariables = table.getLocalVariables(currentMethod);
