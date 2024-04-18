@@ -427,6 +427,7 @@ public class astOpValidator extends AnalysisVisitor {
         // Verificar se é uma constante
         else if (!indexNode.getKind().equals("IntegerLiteral")) {
             // Verificar se é uma variável local
+            if (symbolTable.getLocalVariables(currentMethod) != null)
             for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
                 if (indexNode.hasAttribute("name")) {
                     if (localVar.getName().equals(indexNode.get("name"))) {
@@ -436,12 +437,24 @@ public class astOpValidator extends AnalysisVisitor {
                     }
                 }
             }
-            // Verificar se é um parametro de função atual
+            // Verificar se é um parametro da função atual
             if (symbolTable.getParameters(currentMethod) != null) {
                 for (var param : symbolTable.getParameters(currentMethod)) {
                     if (indexNode.hasAttribute("name")) {
                         if (param.getName().equals(indexNode.get("name"))) {
                             if (!param.getType().getName().equals("int") || param.getType().isArray()) {
+                                valid = false;
+                            }
+                        }
+                    }
+                }
+            }
+            // Verificar se é um field da classe
+            if (symbolTable.getFields() != null) {
+                for (var field : symbolTable.getFields()) {
+                    if (indexNode.hasAttribute("name")) {
+                        if (field.getName().equals(indexNode.get("name"))) {
+                            if (!field.getType().getName().equals("int") || field.getType().isArray()) {
                                 valid = false;
                             }
                         }
