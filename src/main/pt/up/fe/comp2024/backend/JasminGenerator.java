@@ -360,12 +360,18 @@ public class JasminGenerator {
         }
 
         code.append("invokevirtual ");
+        var first = (Operand) callInstruction.getOperands().get(0);
+        var firstName = ((ClassType) first.getType()).getName();
+
+        // imports
+
+
         for (var importClass : ollirResult.getOllirClass().getImports()) {
             if (importClass.endsWith(className)) {
-                className.replaceAll("\\.", "/");
+                firstName.replaceAll("\\.", "/");
             }
         }
-        code.append(className).append("/");
+        code.append(firstName).append("/");
 
         // ver o que é este elemento
         var methodName = ((LiteralElement) callInstruction.getMethodName()).getLiteral().replace("\"", "");
