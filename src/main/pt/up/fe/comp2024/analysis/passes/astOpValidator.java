@@ -626,8 +626,10 @@ public class astOpValidator extends AnalysisVisitor {
                                 var expectedParam = method.getChildren("Param").get(i - 1);
 
                                 if (expectedParam.getChildren("VarArgs").isEmpty()) {
-                                    if (!expectedParam.get("type").equals(paramGivenType)) {
-                                        valid = false;
+                                    if (expectedParam.hasAttribute("type")) {
+                                        if (!expectedParam.get("type").equals(paramGivenType)) {
+                                            valid = false;
+                                        }
                                     }
                                 }
                             }
@@ -1391,8 +1393,10 @@ public class astOpValidator extends AnalysisVisitor {
             }
             if (calledFunction != null && currentFunction != null) {
                 // se a função chamada não retornar o mesmo tipo da função atual, dá erro
-                if (!calledFunction.getChildren().get(0).get("type").equals(currentFunction.getChildren().get(0).get("type"))) {
-                    valid = false;
+                if (calledFunction.getChildren().get(0).hasAttribute("type") && currentFunction.getChildren().get(0).hasAttribute("type")) {
+                    if (!calledFunction.getChildren().get(0).get("type").equals(currentFunction.getChildren().get(0).get("type"))) {
+                        valid = false;
+                    }
                 }
                 // se for dado um número errado de argumentos, tem que dar erro
                 for (var returnElement : returnElements) {
@@ -1440,10 +1444,12 @@ public class astOpValidator extends AnalysisVisitor {
                             break;
                         }
 
-                        if (!varUsed.getType().getName().equals(paramsExpected.get(i).get("type"))) {
-                            returnStatm.put("type", paramsExpected.get(i).get("type"));
-                            valid = false;
-                            break;
+                        if (paramsExpected.get(i).hasAttribute("type")) {
+                            if (!varUsed.getType().getName().equals(paramsExpected.get(i).get("type"))) {
+                                returnStatm.put("type", paramsExpected.get(i).get("type"));
+                                valid = false;
+                                break;
+                            }
                         }
                     }
                 }
@@ -1918,7 +1924,7 @@ public class astOpValidator extends AnalysisVisitor {
             // se coincidir com o método a analisar atualmente, estudamos esse método
             if (functionCalled.a.get("methodName").equals(currentMethod)) {
 
-                // verificar se foi dado o numero correto de parametros
+                // verificar se foi dado o número correto de parametros varargs
                 var numVarArgsCalled = 0;
 
                 for (var methodChild : methodChildren) {
@@ -1992,6 +1998,17 @@ public class astOpValidator extends AnalysisVisitor {
                                 }
                             }
                             method.put("isVarArgs", "true");
+                        }
+                        // se não conter varargs
+                        else {
+                            // verificar se foi dado o tipo correto de parametros
+                            var numParamsGiven = functionCalled.a.getNumChildren()-1;
+                            var numParamsExpected = method.getChildren("Param").size();
+                            // se receber menos que os esperados, dá erro
+                            if (numParamsExpected != numParamsGiven) {
+                                valid = false;
+                                break;
+                            }
                         }
                     }
                 }
