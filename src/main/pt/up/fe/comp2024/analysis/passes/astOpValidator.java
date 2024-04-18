@@ -626,8 +626,10 @@ public class astOpValidator extends AnalysisVisitor {
                                 var expectedParam = method.getChildren("Param").get(i - 1);
 
                                 if (expectedParam.getChildren("VarArgs").isEmpty()) {
-                                    if (!expectedParam.get("type").equals(paramGivenType)) {
-                                        valid = false;
+                                    if (expectedParam.hasAttribute("type")) {
+                                        if (!expectedParam.get("type").equals(paramGivenType)) {
+                                            valid = false;
+                                        }
                                     }
                                 }
                             }
@@ -1391,8 +1393,10 @@ public class astOpValidator extends AnalysisVisitor {
             }
             if (calledFunction != null && currentFunction != null) {
                 // se a função chamada não retornar o mesmo tipo da função atual, dá erro
-                if (!calledFunction.getChildren().get(0).get("type").equals(currentFunction.getChildren().get(0).get("type"))) {
-                    valid = false;
+                if (calledFunction.getChildren().get(0).hasAttribute("type") && currentFunction.getChildren().get(0).hasAttribute("type")) {
+                    if (!calledFunction.getChildren().get(0).get("type").equals(currentFunction.getChildren().get(0).get("type"))) {
+                        valid = false;
+                    }
                 }
                 // se for dado um número errado de argumentos, tem que dar erro
                 for (var returnElement : returnElements) {
@@ -1440,10 +1444,12 @@ public class astOpValidator extends AnalysisVisitor {
                             break;
                         }
 
-                        if (!varUsed.getType().getName().equals(paramsExpected.get(i).get("type"))) {
-                            returnStatm.put("type", paramsExpected.get(i).get("type"));
-                            valid = false;
-                            break;
+                        if (paramsExpected.get(i).hasAttribute("type")) {
+                            if (!varUsed.getType().getName().equals(paramsExpected.get(i).get("type"))) {
+                                returnStatm.put("type", paramsExpected.get(i).get("type"));
+                                valid = false;
+                                break;
+                            }
                         }
                     }
                 }
@@ -1873,48 +1879,48 @@ public class astOpValidator extends AnalysisVisitor {
             }
         }
 
-       var methodChildren = method.getChildren();
-       var assignments = method.getChildren("AssignStmt");
+        var methodChildren = method.getChildren();
+        var assignments = method.getChildren("AssignStmt");
 
-       // Ciclo para guardar FunctionCalls e variável que chama a função
-       // Se existirem assignments
-       if (!assignments.isEmpty()) {
-           // percorremos os assigments
-           for (var assignment : assignments) {
-               // verificamos se existem chamadas a funções
-               if (!assignment.getChildren("FunctionCall").isEmpty()) {
-                   // Se existirem, percorremos todas as chamadas feitas a funções
-                   for (var functionCall : assignment.getChildren("FunctionCall")) {
-                       // percorremos as variáveis locais do método atual
-                       if (!assignment.getParent().getChildren("VarDecl").isEmpty()) {
-                           for (var variableCallingFunction : assignment.getParent().getChildren("VarDecl")) {
-                               if (functionCall.getParent().getChildren("VarRefExpr").get(0).hasAttribute("name")) {
-                                   var variableDecl = functionCall.getParent().getChildren("VarRefExpr").get(0).get("name");
-                                   // se encontrarmos a variável que chama a função
-                                   if (variableCallingFunction.get("name").equals(variableDecl)) {
-                                       // confirmar se a variável contém um tipo de valor
-                                       if (variableCallingFunction.getChildren().get(0).hasAttribute("value")) {
-                                           // guardamos a function call e o número de parametros recebidos pela função
-                                           Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
-                                           functionsCalled.add(pairFunc);
-                                       }
-                                       // se variável for um array
-                                       else if (!variableCallingFunction.getChildren("Array").isEmpty()) {
-                                           Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
-                                           functionsCalled.add(pairFunc);
-                                       }
-                                   }
-                               }
-                           }
-                       }
-                   }
-               }
-           }
-       }
+        // Ciclo para guardar FunctionCalls e variável que chama a função
+        // Se existirem assignments
+        if (!assignments.isEmpty()) {
+            // percorremos os assigments
+            for (var assignment : assignments) {
+                // verificamos se existem chamadas a funções
+                if (!assignment.getChildren("FunctionCall").isEmpty()) {
+                    // Se existirem, percorremos todas as chamadas feitas a funções
+                    for (var functionCall : assignment.getChildren("FunctionCall")) {
+                        // percorremos as variáveis locais do método atual
+                        if (!assignment.getParent().getChildren("VarDecl").isEmpty()) {
+                            for (var variableCallingFunction : assignment.getParent().getChildren("VarDecl")) {
+                                if (functionCall.getParent().getChildren("VarRefExpr").get(0).hasAttribute("name")) {
+                                    var variableDecl = functionCall.getParent().getChildren("VarRefExpr").get(0).get("name");
+                                    // se encontrarmos a variável que chama a função
+                                    if (variableCallingFunction.get("name").equals(variableDecl)) {
+                                        // confirmar se a variável contém um tipo de valor
+                                        if (variableCallingFunction.getChildren().get(0).hasAttribute("value")) {
+                                            // guardamos a function call e o número de parametros recebidos pela função
+                                            Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
+                                            functionsCalled.add(pairFunc);
+                                        }
+                                        // se variável for um array
+                                        else if (!variableCallingFunction.getChildren("Array").isEmpty()) {
+                                            Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
+                                            functionsCalled.add(pairFunc);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-       // Analisar se uma variável ao chamar uma função recebe o tipo de retorno correto
+        // Analisar se uma variável ao chamar uma função recebe o tipo de retorno correto
         // percorremos as chamadas feitas a funções até agora
-       for (Pair<JmmNode, JmmNode> functionCalled : functionsCalled) {
+        for (Pair<JmmNode, JmmNode> functionCalled : functionsCalled) {
             // se coincidir com o método a analisar atualmente, estudamos esse método
             if (functionCalled.a.get("methodName").equals(currentMethod)) {
 
@@ -1993,21 +1999,32 @@ public class astOpValidator extends AnalysisVisitor {
                             }
                             method.put("isVarArgs", "true");
                         }
+                        // se não conter varargs
+                        else {
+                            // verificar se foi dado o tipo correto de parametros
+                            var numParamsGiven = functionCalled.a.getNumChildren()-1;
+                            var numParamsExpected = method.getChildren("Param").size();
+                            // se receber menos que os esperados, dá erro
+                            if (numParamsExpected != numParamsGiven) {
+                                valid = false;
+                                break;
+                            }
+                        }
                     }
                 }
             }
-       }
+        }
 
-       if (!valid) {
-           var message = String.format("Invalid method: '%s'", method);
-           addReport(Report.newError(
-                   Stage.SEMANTIC,
-                   NodeUtils.getLine(method),
-                   NodeUtils.getColumn(method),
-                   message,
-                   null)
-           );
-       }
+        if (!valid) {
+            var message = String.format("Invalid method: '%s'", method);
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(method),
+                    NodeUtils.getColumn(method),
+                    message,
+                    null)
+            );
+        }
 
         return null;
     }
@@ -2071,7 +2088,7 @@ public class astOpValidator extends AnalysisVisitor {
         if (table.getLocalVariables(currentMethod).stream()
                 .anyMatch(varDec -> varDec.getName().equals(varRefName)) ||
                 table.getImports().stream().anyMatch(imp -> imp.equals(varRefName))
-                ) {
+        ) {
             if (varDecl.getChildren().get(0).getKind().equals("Array")) {
                 if (varDecl.getChildren().get(0).getChildren().get(0).hasAttribute("value")) {
                     varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
