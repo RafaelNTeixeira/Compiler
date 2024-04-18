@@ -2039,6 +2039,17 @@ public class astOpValidator extends AnalysisVisitor {
         // verificar se o id da declaração existe
         boolean correctID = false;
 
+        if (!varDecl.getDescendants("VarArgs").isEmpty()) {
+            var message = String.format("Can´t use varargs on locals or fields '%s'.", varDecl);
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(varDecl),
+                    NodeUtils.getColumn(varDecl),
+                    message,
+                    null)
+            );
+        }
+
         if (varDecl.getChildren().get(0).getKind().equals("Array")) {
             var arrayNode = varDecl.getChildren().get(0);
             if (arrayNode.getChildren().get(0).hasAttribute("value")) {
