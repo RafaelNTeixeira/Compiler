@@ -1454,9 +1454,11 @@ public class astOpValidator extends AnalysisVisitor {
             // verificar se existe o arrayVar no ficheiro
             if (symbolTable.getLocalVariables(currentMethod) != null) {
                 for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                    if (localVar.getName().equals(arrayVar.get("name"))) {
-                        foundArrayDecl = true;
-                        arrayVarSymbol = localVar;
+                    if (arrayVar.hasAttribute("name")) {
+                        if (localVar.getName().equals(arrayVar.get("name"))) {
+                            foundArrayDecl = true;
+                            arrayVarSymbol = localVar;
+                        }
                     }
                 }
             }
@@ -1464,9 +1466,11 @@ public class astOpValidator extends AnalysisVisitor {
             if (!foundArrayDecl) {
                 if (symbolTable.getParameters(currentMethod) != null) {
                     for (var param : symbolTable.getParameters(currentMethod)) {
-                        if (param.getName().equals(arrayVar.get("name"))) {
-                            foundArrayDecl = true;
-                            arrayVarSymbol = param;
+                        if (arrayVar.hasAttribute("name")) {
+                            if (param.getName().equals(arrayVar.get("name"))) {
+                                foundArrayDecl = true;
+                                arrayVarSymbol = param;
+                            }
                         }
                     }
                 }
@@ -1475,9 +1479,11 @@ public class astOpValidator extends AnalysisVisitor {
             if (!foundArrayDecl) {
                 if (symbolTable.getFields() != null) {
                     for (var field : symbolTable.getFields()) {
-                        if (field.getName().equals(arrayVar.get("name"))) {
-                            foundArrayDecl = true;
-                            arrayVarSymbol = field;
+                        if (arrayVar.hasAttribute("name")) {
+                            if (field.getName().equals(arrayVar.get("name"))) {
+                                foundArrayDecl = true;
+                                arrayVarSymbol = field;
+                            }
                         }
                     }
                 }
@@ -1499,18 +1505,22 @@ public class astOpValidator extends AnalysisVisitor {
                     // verificar se existe a variável index no ficheiro
                     if (symbolTable.getLocalVariables(currentMethod) != null) {
                         for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                            if (localVar.getName().equals(arrayIndex.get("name"))) {
-                                foundArrayIndex = true;
-                                arrayIndexSymbol = localVar;
+                            if (arrayIndex.hasAttribute("name")) {
+                                if (localVar.getName().equals(arrayIndex.get("name"))) {
+                                    foundArrayIndex = true;
+                                    arrayIndexSymbol = localVar;
+                                }
                             }
                         }
                     }
                     if (!foundArrayIndex) {
                         if (symbolTable.getParameters(currentMethod) != null) {
                             for (var param : symbolTable.getParameters(currentMethod)) {
-                                if (param.getName().equals(arrayIndex.get("name"))) {
-                                    foundArrayIndex = true;
-                                    arrayIndexSymbol = param;
+                                if (arrayIndex.hasAttribute("name")) {
+                                    if (param.getName().equals(arrayIndex.get("name"))) {
+                                        foundArrayIndex = true;
+                                        arrayIndexSymbol = param;
+                                    }
                                 }
                             }
                         }
@@ -1518,9 +1528,11 @@ public class astOpValidator extends AnalysisVisitor {
                     if (!foundArrayIndex) {
                         if (symbolTable.getFields() != null) {
                             for (var field : symbolTable.getFields()) {
-                                if (field.getName().equals(arrayIndex.get("name"))) {
-                                    foundArrayIndex = true;
-                                    arrayIndexSymbol = field;
+                                if (arrayIndex.hasAttribute("name")) {
+                                    if (field.getName().equals(arrayIndex.get("name"))) {
+                                        foundArrayIndex = true;
+                                        arrayIndexSymbol = field;
+                                    }
                                 }
                             }
                         }
@@ -1554,8 +1566,10 @@ public class astOpValidator extends AnalysisVisitor {
                     } else if (returnElement.get(1).equals("true") || returnElement.get(1).equals("false")) {
                         for (var method : methods) {
                             if (method.get("methodName").equals(currentMethod)) {
-                                var expectedFuncRetType = method.getChildren().get(0).get("value");
-                                if (!expectedFuncRetType.equals("boolean")) valid = false;
+                                if (method.getChildren().get(0).hasAttribute("value")) {
+                                    var expectedFuncRetType = method.getChildren().get(0).get("value");
+                                    if (!expectedFuncRetType.equals("boolean")) valid = false;
+                                }
                             }
                         }
                         if (valid) return null;
@@ -1588,9 +1602,11 @@ public class astOpValidator extends AnalysisVisitor {
         // verificar se existem métodos repetidos
         for (int i = 0; i < methods.size(); i++) {
             for (int j = i + 1; j < methods.size(); j++) {
-                if (methods.get(i).get("methodName").equals(methods.get(j).get("methodName"))) {
-                    valid = false;
-                    break;
+                if (methods.get(i).hasAttribute("methodName") && methods.get(j).hasAttribute("methodName")) {
+                    if (methods.get(i).get("methodName").equals(methods.get(j).get("methodName"))) {
+                        valid = false;
+                        break;
+                    }
                 }
             }
         }
@@ -1640,16 +1656,18 @@ public class astOpValidator extends AnalysisVisitor {
         // verificar se tem return para o caso de uma função que precise de retornar um tipo
         if (method.getChildren().get(0).hasAttribute("value")) {
             int numReturns = method.getDescendants("ReturnStmt").size();
-            String funcRetType = method.getChildren().get(0).get("value");
-            if (funcRetType.equals("int") || funcRetType.equals("boolean")) {
-                if (numReturns == 0) valid = false;
+            if (method.getChildren().get(0).hasAttribute("value")) {
+                String funcRetType = method.getChildren().get(0).get("value");
+                if (funcRetType.equals("int") || funcRetType.equals("boolean")) {
+                    if (numReturns == 0) valid = false;
+                }
             }
         }
 
         // validar a estrutura do método main
         if (currentMethod.equals("main")) {
             // só pode ter um node Param como node filho
-            if (method.getChildren("Void").size() > 0) valid = false;
+            if (!method.getChildren("Void").isEmpty()) valid = false;
             if (method.getChildren("Param").size() > 1) valid = false;
 
             var mainParam = method.getChildren("Param").get(0);
@@ -1671,7 +1689,12 @@ public class astOpValidator extends AnalysisVisitor {
             var functionCalls = method.getDescendants("VarRefExpr");
             if (!functionCalls.isEmpty()) {
                 for (var functionCall : functionCalls) {
-                    if (functionCall.get("name").equals("this")) valid = false;
+                    if (functionCall.hasAttribute("name")) {
+                        if (functionCall.get("name").equals("this")) {
+                            valid = false;
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -1702,30 +1725,36 @@ public class astOpValidator extends AnalysisVisitor {
                         // descobrir o tipo da variável
                         if (table.getParameters(currentMethod) != null) {
                             for (var param : table.getParameters(currentMethod)) {
-                                if (param.getName().equals(returnNodeKind.get("name"))) {
-                                    if (!returnType.getName().equals(param.getType().getName())) {
-                                        valid = false;
-                                        break;
+                                if (returnNodeKind.hasAttribute("name")) {
+                                    if (param.getName().equals(returnNodeKind.get("name"))) {
+                                        if (!returnType.getName().equals(param.getType().getName())) {
+                                            valid = false;
+                                            break;
+                                        }
                                     }
                                 }
                             }
                         }
                         if (table.getLocalVariables(currentMethod) != null) {
                             for (var localVar : table.getLocalVariables(currentMethod)) {
-                                if (localVar.getName().equals(returnNodeKind.get("name"))) {
-                                    if (!returnType.getName().equals(localVar.getType().getName())) {
-                                        valid = false;
-                                        break;
+                                if (returnNodeKind.hasAttribute("name")) {
+                                    if (localVar.getName().equals(returnNodeKind.get("name"))) {
+                                        if (!returnType.getName().equals(localVar.getType().getName())) {
+                                            valid = false;
+                                            break;
+                                        }
                                     }
                                 }
                             }
                         }
                         if (table.getFields() != null) {
                             for (var field : table.getFields()) {
-                                if (field.getName().equals(returnNodeKind.get("name"))) {
-                                    if (!returnType.getName().equals(field.getType().getName())) {
-                                        valid = false;
-                                        break;
+                                if (returnNodeKind.hasAttribute("name")) {
+                                    if (field.getName().equals(returnNodeKind.get("name"))) {
+                                        if (!returnType.getName().equals(field.getType().getName())) {
+                                            valid = false;
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -1751,7 +1780,9 @@ public class astOpValidator extends AnalysisVisitor {
             method.put("isArray", "true");
         }
         else {
-            method.put("type", method.getChildren().get(0).get("value"));
+            if (method.getChildren().get(0).hasAttribute("value")) {
+                method.put("type", method.getChildren().get(0).get("value"));
+            }
         }
 
        var methodChildren = method.getChildren();
@@ -1767,20 +1798,24 @@ public class astOpValidator extends AnalysisVisitor {
                    // Se existirem, percorremos todas as chamadas feitas a funções
                    for (var functionCall : assignment.getChildren("FunctionCall")) {
                        // percorremos as variáveis locais do método atual
-                       for (var variableCallingFunction : assignment.getParent().getChildren("VarDecl")) {
-                           var variableDecl = functionCall.getParent().getChildren("VarRefExpr").get(0).get("name");
-                           // se encontrarmos a variável que chama a função
-                           if (variableCallingFunction.get("name").equals(variableDecl)) {
-                               // confirmar se a variável contém um tipo de valor
-                               if (variableCallingFunction.getChildren().get(0).hasAttribute("value")) {
-                                   // guardamos a function call e o número de parametros recebidos pela função
-                                   Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
-                                   functionsCalled.add(pairFunc);
-                               }
-                               // se variável for um array
-                               else if (!variableCallingFunction.getChildren("Array").isEmpty()) {
-                                   Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
-                                   functionsCalled.add(pairFunc);
+                       if (!assignment.getParent().getChildren("VarDecl").isEmpty()) {
+                           for (var variableCallingFunction : assignment.getParent().getChildren("VarDecl")) {
+                               if (functionCall.getParent().getChildren("VarRefExpr").get(0).hasAttribute("name")) {
+                                   var variableDecl = functionCall.getParent().getChildren("VarRefExpr").get(0).get("name");
+                                   // se encontrarmos a variável que chama a função
+                                   if (variableCallingFunction.get("name").equals(variableDecl)) {
+                                       // confirmar se a variável contém um tipo de valor
+                                       if (variableCallingFunction.getChildren().get(0).hasAttribute("value")) {
+                                           // guardamos a function call e o número de parametros recebidos pela função
+                                           Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
+                                           functionsCalled.add(pairFunc);
+                                       }
+                                       // se variável for um array
+                                       else if (!variableCallingFunction.getChildren("Array").isEmpty()) {
+                                           Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
+                                           functionsCalled.add(pairFunc);
+                                       }
+                                   }
                                }
                            }
                        }
@@ -1804,7 +1839,7 @@ public class astOpValidator extends AnalysisVisitor {
                         int parametersNumber = method.getChildren("Param").size();
 
                         var varArgsNodes = method.getDescendants("VarArgs");
-                        numVarArgsCalled = method.getDescendants("VarArgs").size();
+                        numVarArgsCalled = varArgsNodes.size();
 
                         // se existir pelo menos um parametro varargs
                         if (numVarArgsCalled > 0) {
@@ -1818,6 +1853,7 @@ public class astOpValidator extends AnalysisVisitor {
                                 numParamsGiven++;
                             }
                             var numParamsExpected = method.getChildren("Param").size();
+                            // se receber menos que os esperados, dá erro
                             if (numParamsExpected > numParamsGiven) {
                                 valid = false;
                                 break;
@@ -1836,23 +1872,29 @@ public class astOpValidator extends AnalysisVisitor {
                                     // se a variável que chamou a função é um inteiro, o return de um vargars tem que ser um array access
                                     if (variableThatCalledFunctionKind.equals("Integer")) {
                                         // tipo da variável que guarda o valor de return do método a analisar agora
-                                        var variableThatCalledFunctionType = functionCalled.b.getChildren().get(0).get("value");
+                                        if (functionCalled.b.getChildren().get(0).hasAttribute("value")) {
+                                            var variableThatCalledFunctionType = functionCalled.b.getChildren().get(0).get("value");
 
-                                        // se os tipos de retorno forem diferentes ou se não for um array access, dá erro
-                                        if (!returnType.getName().equals(variableThatCalledFunctionType)) valid = false;
-                                        if (!child.getChildren().get(0).getKind().equals("ArrayAccess")) valid = false;
+                                            // se os tipos de retorno forem diferentes ou se não for um array access, dá erro
+                                            if (!returnType.getName().equals(variableThatCalledFunctionType))
+                                                valid = false;
+                                            if (!child.getChildren().get(0).getKind().equals("ArrayAccess"))
+                                                valid = false;
+                                        }
                                     }
                                     // se a variável que chamou a função é um array, o return de um vargars pode o ser parâmetro do varargs
                                     else if (variableThatCalledFunctionKind.equals("Array")) {
                                         boolean found = false;
                                         for (var returnElement : child.getChildren()) {
                                             // se o retorno for o parametro vargars (parametro é automaticamento array)
-                                            for (var param : table.getParameters(currentMethod)) {
-                                                if (found) break;
-                                                if (returnElement.hasAttribute("name")) {
-                                                    if (returnElement.get("name").equals(param.getName())) {
-                                                        found = true;
-                                                        break;
+                                            if (table.getParameters(currentMethod) != null) {
+                                                for (var param : table.getParameters(currentMethod)) {
+                                                    if (found) break;
+                                                    if (returnElement.hasAttribute("name")) {
+                                                        if (returnElement.get("name").equals(param.getName())) {
+                                                            found = true;
+                                                            break;
+                                                        }
                                                     }
                                                 }
                                             }
@@ -1909,10 +1951,14 @@ public class astOpValidator extends AnalysisVisitor {
         if (table.getFields().stream()
                 .anyMatch(param -> param.getName().equals(varRefName))) {
             if (varDecl.getChildren().get(0).getKind().equals("Array")) {
-                varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+                if (varDecl.getChildren().get(0).getChildren().get(0).hasAttribute("value")) {
+                    varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+                }
             }
             else {
-                varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                if (varDecl.getChildren().get(0).hasAttribute("value")) {
+                    varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                }
             }
             return null;
         }
@@ -1921,10 +1967,14 @@ public class astOpValidator extends AnalysisVisitor {
         if (table.getParameters(currentMethod).stream()
                 .anyMatch(param -> param.getName().equals(varRefName))) {
             if (varDecl.getChildren().get(0).getKind().equals("Array")) {
-                varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+                if (varDecl.getChildren().get(0).getChildren().get(0).hasAttribute("value")) {
+                    varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+                }
             }
             else {
-                varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                if (varDecl.getChildren().get(0).hasAttribute("value")) {
+                    varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                }
             }
             return null;
         }
@@ -1935,13 +1985,19 @@ public class astOpValidator extends AnalysisVisitor {
                 table.getImports().stream().anyMatch(imp -> imp.equals(varRefName))
                 ) {
             if (varDecl.getChildren().get(0).getKind().equals("Array")) {
-                varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+                if (varDecl.getChildren().get(0).getChildren().get(0).hasAttribute("value")) {
+                    varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+                }
             }
             else if (varDecl.getChildren().get(0).getKind().equals("Var")) {
-                varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                if (varDecl.getChildren().get(0).hasAttribute("value")) {
+                    varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                }
             }
             else {
-                varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                if (varDecl.getChildren().get(0).hasAttribute("value")) {
+                    varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                }
             }
             return null;
         }
