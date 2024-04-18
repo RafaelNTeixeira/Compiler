@@ -7,7 +7,7 @@ Test extends asmth {
 tmp0.Test :=.Test new(Test).Test;
 invokespecial(tmp0.Test, "").V;
 test.Test :=.Test tmp0.Test;
-invokevirtual(test.Test, "call").Test;
+invokevirtual(test.Test, "call").i32;
 ret.V ;
 }
 
@@ -15,7 +15,7 @@ ret.V ;
 tmp2.smth :=.smth new(smth).smth;
 invokespecial(tmp2.smth, "").V;
 s.smth :=.smth tmp2.smth;
-invokevirtual(s.smth, "apply").smth;
+invokevirtual(s.smth, "apply").V;
 ret.i32 1.i32;
 }
 

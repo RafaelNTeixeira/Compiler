@@ -360,12 +360,10 @@ public class JasminGenerator {
         }
 
         code.append("invokevirtual ");
-        var first = (Operand) callInstruction.getOperands().get(0);
-        var firstName = ((ClassType) first.getType()).getName();
 
         // imports
-
-
+        var first = (Operand) callInstruction.getOperands().get(0);
+        var firstName = ((ClassType) first.getType()).getName();
         for (var importClass : ollirResult.getOllirClass().getImports()) {
             if (importClass.endsWith(className)) {
                 firstName.replaceAll("\\.", "/");
@@ -445,10 +443,25 @@ public class JasminGenerator {
 
         code.append("invokespecial ");
         var className = ollirResult.getOllirClass().getClassName();
+        var element = callInstruction.getOperands().get(0).getType();
+
+        if (element.getTypeOfElement() == ElementType.THIS) {
+            code.append(ollirResult.getOllirClass().getSuperClass());
+        } else {
+            var first = (Operand) callInstruction.getOperands().get(0);
+            var firstName = ((ClassType) first.getType()).getName();
+            for (var importClass : ollirResult.getOllirClass().getImports()) {
+                if (importClass.endsWith(className)) {
+                    firstName.replaceAll("\\.", "/");
+                }
+            }
+            code.append(firstName);
+        }
+        /*
         if (callInstruction.getArguments().isEmpty()
                 || callInstruction.getArguments().get(0).getType().getTypeOfElement().equals(ElementType.THIS)){
             code.append(className);
-        } // else é ir buscar aos imports
+        }
         else {
             for (var importClass : ollirResult.getOllirClass().getImports()) {
                 if (importClass.endsWith(className)) {
@@ -457,6 +470,7 @@ public class JasminGenerator {
             }
             code.append(className);
         }
+         */
         code.append("/<init>(");
         for (var agr :callInstruction.getArguments()){
             code.append(generators.apply(agr));
@@ -473,11 +487,20 @@ public class JasminGenerator {
         for (var agr : callInstruction.getArguments()){
             code.append(generators.apply(agr));
         }
+
+        var first = (Operand) callInstruction.getOperands().get(0);
+        var firstName = ((ClassType) first.getType()).getName();
+        var className = ollirResult.getOllirClass().getClassName();
+
         if (callInstruction.getReturnType().getTypeOfElement().name().equals("OBJECTREF")) {
-            var className = ollirResult.getOllirClass().getClassName();
-            code.append("new ").append(className).append(NL);
-            code.append("dup").append(NL);
+            for (var importClass : ollirResult.getOllirClass().getImports()) {
+                if (importClass.endsWith(className)) {
+                    firstName.replaceAll("\\.", "/");
+                }
+            }
         }
+        code.append("new ").append(firstName).append(NL);
+        code.append("dup").append(NL);
 
         return code.toString();
     }
