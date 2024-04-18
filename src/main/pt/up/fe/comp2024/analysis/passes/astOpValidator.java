@@ -558,6 +558,86 @@ public class astOpValidator extends AnalysisVisitor {
 
             }
 
+            // verificar se os tipos dados como parametros são válidos
+            for (int i = 1; i < expressionNode.getChildren().size(); i++) {
+                var paramGiven = expressionNode.getChildren().get(i);
+                String paramGivenType = "";
+
+                if (paramGiven.getKind().equals("IntegerLiteral")) {
+                    paramGivenType = "int";
+                }
+                else if (paramGiven.getKind().equals("VarRefExpr")) {
+                    if (paramGiven.hasAttribute("name")) {
+                        if (paramGiven.get("name").equals("true") || paramGiven.get("name").equals("false")) {
+                            paramGivenType = "boolean";
+                        }
+                    }
+                }
+
+                // procurar pelo valor dado caso ainda não tenha sido encontrado
+                if (paramGivenType.isEmpty()) {
+                    // procurar pelo tipo do valor dado nas locals
+                    if (symbolTable.getLocalVariables(currentMethod) != null) {
+                        for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                            if (paramGiven.hasAttribute("name")) {
+                                if (localVar.getName().equals(paramGiven.get("name"))) {
+                                    paramGivenType = localVar.getType().getName();
+                                }
+                            }
+                        }
+                    }
+                }
+                if (paramGivenType.isEmpty()) {
+                    // procurar pelo tipo do valor dado nos fields
+                    if (symbolTable.getFields() != null) {
+                        for (var field : symbolTable.getFields()) {
+                            if (paramGiven.hasAttribute("name")) {
+                                if (field.getName().equals(paramGiven.get("name"))) {
+                                    paramGivenType = field.getType().getName();
+                                }
+                            }
+                        }
+                    }
+                }
+                if (paramGivenType.isEmpty()) {
+                    // procurar pelo tipo do valor dado nos parametros
+                    if (symbolTable.getParameters(currentMethod) != null) {
+                        for (var param : symbolTable.getParameters(currentMethod)) {
+                            if (paramGiven.hasAttribute("name")) {
+                                if (param.getName().equals(paramGiven.get("name"))) {
+                                    paramGivenType = param.getType().getName();
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (paramGivenType.isEmpty()) {
+                    valid = false;
+                    break;
+                }
+
+                // procurar pela função
+                for (var method : this.methods) {
+                    if (method.hasAttribute("methodName") && expressionNode.hasAttribute("methodName")) {
+                        if (method.get("methodName").equals(expressionNode.get("methodName"))) {
+                            var hasVarArgsDescendents = !method.getDescendants("VarArgs").isEmpty();
+                            if (!hasVarArgsDescendents) {
+                                var expectedParam = method.getChildren("Param").get(i - 1);
+
+                                if (expectedParam.getChildren("VarArgs").isEmpty()) {
+                                    if (!expectedParam.get("type").equals(paramGivenType)) {
+                                        valid = false;
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+                var paramExpected = "";
+            }
+
             for (var functionElement : expressionNode.getChildren()) {
                 // retirar tipo dos elementos e inseri-lo nos nodes que constituem a chamada à função
                 if (functionElement.getKind().equals("VarRefExpr")) {
