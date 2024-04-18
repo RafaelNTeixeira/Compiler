@@ -276,21 +276,24 @@ public class JasminGenerator {
 
         // store value in the stack in destination
         var lhs = assign.getDest();
+        int reg;
 
+        //fazer isto para dar teste privado
         if (!(lhs instanceof Operand)) {
-            throw new NotImplementedException(lhs.getClass());
+            var cla = lhs.getClass().getName();
+            reg = currentMethod.getVarTable().get(cla).getVirtualReg();
+            //throw new NotImplementedException(lhs.getClass());
+        } else {
+            var operand = (Operand) lhs;
+            // get register
+            reg = currentMethod.getVarTable().get(operand.getName()).getVirtualReg();
         }
-
-        var operand = (Operand) lhs;
-
-        // get register
-        var reg = currentMethod.getVarTable().get(operand.getName()).getVirtualReg();
 
         var storeTypeName = assign.getTypeOfAssign().getTypeOfElement().name();
         String storeType;
         storeType = switch (storeTypeName) {
             case "INT32", "BOOLEAN" -> "istore ";
-            case "ARRAYREF", "STRING", "OBJECTREF", "CLASS", "THIS" -> "astore ";
+            case "ARRAYREF", "STRING", "OBJECTREF", "THIS", "CLASS" -> "astore ";
             case "VOID" -> "store ";
             default -> throw new IllegalArgumentException("Unsupported type: " + storeTypeName);
         };
