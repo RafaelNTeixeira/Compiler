@@ -33,6 +33,15 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         exprVisitor = new OllirExprGeneratorVisitor(table);
     }
 
+    private boolean checkIfImport(String name) {
+        for (var importID : table.getImports()) {
+            if (importID.equals(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     @Override
     protected void buildVisitor() {
@@ -446,10 +455,18 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
             code.append(ASSIGN + type + SPACE);
         }
 
-        if (node.getParent().getKind().equals("BinaryExpr") || node.getParent().getKind().equals("AssignStmt")){
+        if (node.getChild(0).get("name").equals("this")){
             code.append("invokevirtual(");
         }
-        else code.append("invokestatic(");
+        else{
+            if (checkIfImport(node.getChild(0).get("name"))){
+                code.append("invokestatic(");
+            }
+            else {
+                code.append("invokevirtual(");
+            }
+        }
+
         code.append(node.getChild(0).get("name"));
         if (node.getParent().getKind().equals("AssignStmt")){
             var type = OptUtils.toOllirType(node.getChild(0));
