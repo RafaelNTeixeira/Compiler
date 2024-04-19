@@ -436,7 +436,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
             code.append(ASSIGN + type + SPACE);
         }
 
-        code.append("invokestatic(");
+        code.append("invokevirtual(");
         code.append(node.getChild(0).get("name"));
         if (node.getParent().getKind().equals("AssignStmt")){
             var type = OptUtils.toOllirType(node.getChild(0));
