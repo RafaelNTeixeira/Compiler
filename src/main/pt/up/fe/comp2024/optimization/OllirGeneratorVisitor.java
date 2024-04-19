@@ -301,8 +301,18 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         StringBuilder code = new StringBuilder();
 
         code.append("import ");
-        code.append(node.get("ID"));
-        code.append(";\n");
+        var first = 0;
+
+        for (var value : node.getObjectAsList("importName")){
+            if (first == 0){
+                code.append(value);
+                first++;
+                continue;
+            }
+            code.append("." + value);
+        }
+
+        code.append(END_STMT);
 
         return code.toString();
     }
