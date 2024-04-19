@@ -416,6 +416,8 @@ public class astOpValidator extends AnalysisVisitor {
     private Void visitArrayAccess(JmmNode arrayAccessNode, SymbolTable symbolTable) {
         boolean valid = true;
 
+        //if (arrayAccessNode.getChildren().get(0))
+
         // Verificar se valor dentro de [] é int
         var indexNode = arrayAccessNode.getChildren().get(1);
         // Se for um array access com uma conta aritmética
@@ -1114,7 +1116,7 @@ public class astOpValidator extends AnalysisVisitor {
                         // se a variável for do tipo array
                         if (assignElements.get(1).getKind().equals("ArrayAccess")) {
                             // e tiver o mesmo nome que a variável da direita, dá erro (Variável esquerda nesta fase já não é array)
-                            if (assignElements.get(0).hasAttribute("name")) {
+                            if (assignElements.get(1).getChildren().get(0).hasAttribute("name") && assignElements.get(0).hasAttribute("name")) {
                                 if (assignElements.get(1).getChildren().get(0).get("name").equals(assignElements.get(0).get("name"))) {
                                     valid = false;
                                     break;
@@ -1302,6 +1304,12 @@ public class astOpValidator extends AnalysisVisitor {
 
         if (!returnStatm.getDescendants("VarArgs").isEmpty()) valid = false;
 
+        // se for variável ou array o primeiro elemento é válido
+        var arrayAccessNodes = returnStatm.getDescendants("ArrayAccess");
+        for (var arrayAccessNode : arrayAccessNodes) {
+            if (!arrayAccessNode.getChildren().get(0).getKind().equals("ArrayInit") && !arrayAccessNode.getChildren().get(0).getKind().equals("VarRefExpr")) valid = false;
+        }
+
         // não pode conter varargs num return
         for (var method : methods) {
             if (!returnStatm.getChildren("FunctionCall").isEmpty()) {
@@ -1343,6 +1351,7 @@ public class astOpValidator extends AnalysisVisitor {
         for (var returnElement : returnElements) {
             found = false;
             // se for variável
+            var hasArrayAccess = !returnStatm.getDescendants("ArrayAccess").isEmpty();
             if (returnElement.getKind().equals("VarRefExpr")) {
                 if (localVariables != null) {
                     // procura nas variáveis locais se existe
@@ -1350,8 +1359,13 @@ public class astOpValidator extends AnalysisVisitor {
                         if (returnElement.hasAttribute("name")) {
                             if (localVar.getName().equals(returnElement.get("name"))) {
                                 found = true;
-                                if ((localVar.getType().isArray() && !isArray) || (!localVar.getType().isArray() && isArray)) valid = false;
                                 if (!localVar.getType().getName().equals(funcTypeExpected)) valid = false;
+                                if (hasArrayAccess && isArray) valid = false;
+                                // se o return não tiver um array access, estudam-se tipos de return array/função que espera resultado em array
+                                if (!hasArrayAccess) {
+                                    if ((localVar.getType().isArray() && !isArray) || (!localVar.getType().isArray() && isArray))
+                                        valid = false;
+                                }
                                 break;
                             }
                         }
@@ -1366,7 +1380,10 @@ public class astOpValidator extends AnalysisVisitor {
                     if (returnElement.hasAttribute("name")) {
                         if (param.getName().equals(returnElement.get("name"))) {
                             found = true;
-                            if ((param.getType().isArray() && !isArray) || (!param.getType().isArray() && isArray)) valid = false;
+                            if (!hasArrayAccess) {
+                                if ((param.getType().isArray() && !isArray) || (!param.getType().isArray() && isArray))
+                                    valid = false;
+                            }
                             if (!param.getType().getName().equals(funcTypeExpected)) valid = false;
                             break;
                         }
@@ -1378,7 +1395,10 @@ public class astOpValidator extends AnalysisVisitor {
                             if (returnElement.hasAttribute("name")) {
                                 if (field.getName().equals(returnElement.get("name"))) {
                                     found = true;
-                                    if ((field.getType().isArray() && !isArray) || (!field.getType().isArray() && isArray)) valid = false;
+                                    if (!hasArrayAccess) {
+                                        if ((field.getType().isArray() && !isArray) || (!field.getType().isArray() && isArray))
+                                            valid = false;
+                                    }
                                     if (!field.getType().getName().equals(funcTypeExpected)) valid = false;
                                     break;
                                 }
@@ -1682,6 +1702,17 @@ public class astOpValidator extends AnalysisVisitor {
         }
         // Check if var in return exists
         else {
+            if (!valid) {
+                // Create error report
+                var message = String.format("Incompatible return types: '%s'", returnTypes);
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(returnStatm),
+                        NodeUtils.getColumn(returnStatm),
+                        message,
+                        null)
+                );
+            }
             if (returnTypes != null) {
                 for (var returnElement : returnTypes) {
                     if (symbolTable.getParameters(currentMethod) != null && symbolTable.getParameters(currentMethod).stream()
@@ -1735,6 +1766,12 @@ public class astOpValidator extends AnalysisVisitor {
         currentMethod = method.get("methodName");
 
         boolean valid = true;
+
+        var arrayAccessNodes = method.getDescendants("ArrayAccess");
+
+        for (var arrayAccessNode : arrayAccessNodes) {
+            if (!arrayAccessNode.getChildren().get(0).getKind().equals("ArrayInit") && !arrayAccessNode.getChildren().get(0).getKind().equals("VarRefExpr")) valid = false;
+        }
 
         // verificar se existem métodos repetidos
         for (int i = 0; i < methods.size(); i++) {
