@@ -1,4 +1,4 @@
-import io.e.r;
+import io;
 import Quicksort;
 
 class CompileBasic extends Quicksort {
