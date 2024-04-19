@@ -1,0 +1,9 @@
+class ArrayInitAccess {
+
+    public int foo() {
+        int a;
+        a = [10, 20, 30][0];
+        return a;
+    }
+
+}

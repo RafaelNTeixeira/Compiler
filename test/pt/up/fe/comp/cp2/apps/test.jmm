@@ -1,0 +1,19 @@
+import io.asmth;
+import io.smth;
+
+class Test extends asmth {
+
+	public static void main(String[] args) {
+    	Test test;
+		test = new Test();
+		test.call();
+	}
+
+	public int call() {
+	    smth s;
+	    s = new smth();
+	    s.apply();
+	    return 1;
+	    }
+
+}

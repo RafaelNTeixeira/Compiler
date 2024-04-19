@@ -25,7 +25,6 @@ GREATER : '>' ;
 GE : '>=' ;
 COMMA : ',';
 NEW : 'new';
-LEN : 'length';
 DOT : '.';
 VAR_ARGS : '...';
 
@@ -123,7 +122,7 @@ expr
     | NEW className=ID LPAREN (expr (COMMA expr)* )? RPAREN #NewClass //
     | expr LSQUARE expr RSQUARE #ArrayAccess //
     | LSQUARE ( expr ( COMMA expr )* )? RSQUARE #ArrayInit //
-    | expr DOT LEN #Length //
+    | expr DOT ID #Length //
     | expr op=(MUL | DIV) expr #BinaryExpr //
     | expr op=(ADD | SUB) expr #BinaryExpr //
     | expr op=('<=' | '<' | '>' | '>=' | '==' | '!=' | '+=' | '-=' | '*=' | '/=') expr #BinaryOp //

@@ -1,0 +1,16 @@
+class ArrayAccessValid {
+
+    public static void main(String[] args) {
+
+    }
+
+    public int foo() {
+        int[] a;
+        int b;
+
+        a = new int[2];
+        b = a[1];
+
+        return a[b];
+    }
+}

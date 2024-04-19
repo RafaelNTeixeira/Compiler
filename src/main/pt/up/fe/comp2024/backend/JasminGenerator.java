@@ -84,7 +84,18 @@ public class JasminGenerator {
 
         if(ollirResult.getOllirClass().getSuperClass() != null) {
             var superName = ollirResult.getOllirClass().getSuperClass();
-            code.append(".super ").append(superName).append(NL).append(NL);
+
+            if (superName.equals("this")) code.append(className);
+
+            else {
+                for (var importClass : ollirResult.getOllirClass().getImports()) {
+                    if (importClass.endsWith(superName)) {
+                        var test = importClass.replace(".", "/");
+                        code.append(".super ").append(test).append(NL);
+                    }
+                }
+            }
+
         } else {
             code.append(".super java/lang/Object").append(NL).append(NL);
         }
@@ -109,7 +120,15 @@ public class JasminGenerator {
         code.append(TAB).append(" ").append("invokespecial ");
         if (ollirResult.getOllirClass().getSuperClass() != null) {
             var superName = ollirResult.getOllirClass().getSuperClass();
-            code.append(superName);
+            if (superName.equals("this")) code.append(className);
+            else {
+                for (var importClass : ollirResult.getOllirClass().getImports()) {
+                    if (importClass.endsWith(superName)) {
+                        var test = importClass.replace(".", "/");
+                        code.append(test);
+                    }
+                }
+            }
         } else {
             code.append("java/lang/Object");
         }
@@ -168,7 +187,7 @@ public class JasminGenerator {
         return code.toString();
     }
 
-    private static String getJasminType(Type type) {
+        private String getJasminType(Type type) {
         String jasminType;
         String typeName = type.getTypeOfElement().name();
 
@@ -176,12 +195,22 @@ public class JasminGenerator {
             case "INT32" -> "I";
             case "BOOLEAN" -> "Z";
             case "ARRAYREF" -> "[";
-            case "OBJECTREF", "CLASS", "THIS" -> "L";
+            case "OBJECTREF" ->  getObjectType(type);
+            case "CLASS", "THIS" -> "L";
             case "STRING" -> "Ljava/lang/String;";
             case "VOID" -> "V";
             default -> throw new IllegalArgumentException("Unsupported type: " + typeName);
         };
         return jasminType;
+    }
+
+    private String getObjectType(Type type) {
+        var code = new StringBuilder();
+        var name = ((ClassType) type).getName();
+        //var className = ollirResult.getOllirClass().getClassName();
+        code.append("L").append(name).append(";");
+
+        return code.toString();
     }
 
 
@@ -253,21 +282,24 @@ public class JasminGenerator {
 
         // store value in the stack in destination
         var lhs = assign.getDest();
+        int reg;
 
+        //fazer isto para dar teste privado
         if (!(lhs instanceof Operand)) {
-            throw new NotImplementedException(lhs.getClass());
+            var cla = lhs.getClass().getName();
+            reg = currentMethod.getVarTable().get(cla).getVirtualReg();
+            //throw new NotImplementedException(lhs.getClass());
+        } else {
+            var operand = (Operand) lhs;
+            // get register
+            reg = currentMethod.getVarTable().get(operand.getName()).getVirtualReg();
         }
-
-        var operand = (Operand) lhs;
-
-        // get register
-        var reg = currentMethod.getVarTable().get(operand.getName()).getVirtualReg();
 
         var storeTypeName = assign.getTypeOfAssign().getTypeOfElement().name();
         String storeType;
         storeType = switch (storeTypeName) {
             case "INT32", "BOOLEAN" -> "istore ";
-            case "ARRAYREF", "STRING", "OBJECTREF", "CLASS", "THIS" -> "astore ";
+            case "ARRAYREF", "STRING", "OBJECTREF", "THIS", "CLASS" -> "astore ";
             case "VOID" -> "store ";
             default -> throw new IllegalArgumentException("Unsupported type: " + storeTypeName);
         };
@@ -334,12 +366,20 @@ public class JasminGenerator {
         }
 
         code.append("invokevirtual ");
-        for (var importClass : ollirResult.getOllirClass().getImports()) {
-            if (importClass.endsWith(className)) {
-                className.replaceAll("\\.", "/");
+
+        // imports
+        var first = (Operand) callInstruction.getOperands().get(0);
+        var firstName = ((ClassType) first.getType()).getName();
+        if (firstName.equals("this")){
+            code.append(className);
+        } else {
+            for (var importClass : ollirResult.getOllirClass().getImports()) {
+                if (importClass.endsWith(className)) {
+                    firstName.replaceAll("\\.", "/");
+                }
             }
+            code.append(firstName).append("/");
         }
-        code.append(className).append("/");
 
         // ver o que é este elemento
         var methodName = ((LiteralElement) callInstruction.getMethodName()).getLiteral().replace("\"", "");
@@ -367,11 +407,6 @@ public class JasminGenerator {
     private String getStaticCall(CallInstruction callInstruction) {
         var code = new StringBuilder();
         var className = ollirResult.getOllirClass().getClassName();
-        /*
-        for (var staticElement : callInstruction.getOperands()) {
-            code.append(generators.apply(staticElement));
-        }
-        */
 
         for (var argument : callInstruction.getArguments()) {
             code.append(generators.apply(argument));
@@ -418,10 +453,25 @@ public class JasminGenerator {
 
         code.append("invokespecial ");
         var className = ollirResult.getOllirClass().getClassName();
+        var element = callInstruction.getOperands().get(0).getType();
+
+        if (element.getTypeOfElement() == ElementType.THIS) {
+            code.append(ollirResult.getOllirClass().getSuperClass());
+        } else {
+            var first = (Operand) callInstruction.getOperands().get(0);
+            var firstName = ((ClassType) first.getType()).getName();
+            for (var importClass : ollirResult.getOllirClass().getImports()) {
+                if (importClass.endsWith(className)) {
+                    firstName.replaceAll("\\.", "/");
+                }
+            }
+            code.append(firstName);
+        }
+        /*
         if (callInstruction.getArguments().isEmpty()
                 || callInstruction.getArguments().get(0).getType().getTypeOfElement().equals(ElementType.THIS)){
             code.append(className);
-        } // else é ir buscar aos imports
+        }
         else {
             for (var importClass : ollirResult.getOllirClass().getImports()) {
                 if (importClass.endsWith(className)) {
@@ -430,6 +480,7 @@ public class JasminGenerator {
             }
             code.append(className);
         }
+         */
         code.append("/<init>(");
         for (var agr :callInstruction.getArguments()){
             code.append(generators.apply(agr));
@@ -446,11 +497,20 @@ public class JasminGenerator {
         for (var agr : callInstruction.getArguments()){
             code.append(generators.apply(agr));
         }
+
+        var first = (Operand) callInstruction.getOperands().get(0);
+        var firstName = ((ClassType) first.getType()).getName();
+        var className = ollirResult.getOllirClass().getClassName();
+
         if (callInstruction.getReturnType().getTypeOfElement().name().equals("OBJECTREF")) {
-            var className = ollirResult.getOllirClass().getClassName();
-            code.append("new ").append(className).append(NL);
-            code.append("dup").append(NL);
+            for (var importClass : ollirResult.getOllirClass().getImports()) {
+                if (importClass.endsWith(className)) {
+                    firstName.replaceAll("\\.", "/");
+                }
+            }
         }
+        code.append("new ").append(firstName).append(NL);
+        code.append("dup").append(NL);
 
         return code.toString();
     }
