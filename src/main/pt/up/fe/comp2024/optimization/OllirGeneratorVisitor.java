@@ -237,6 +237,19 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
             var retCode = visit(returner.getChild(0));
             code.append(retCode);
         }
+        else if (Objects.equals(returner.getChild(0).getKind(), "FunctionCall")){
+            var type = OptUtils.toOllirType(node);
+            code.append(OptUtils.getTemp() + type);
+            code.append(ASSIGN + type + SPACE);
+            var retCode = visit(returner.getChild(0));
+            var len = type.length();
+            String typeComp = retCode.substring(retCode.length() - len);
+            if (!typeComp.equals(type + END_STMT)) {
+                String newCode = retCode.substring(0, retCode.length() - 4);
+                code.append(newCode + type + END_STMT);
+            }
+            else code.append(retCode);
+        }
         code.append("ret" + retType + SPACE);
         if (returner.getChild(0).hasAttribute("name")) {
             code.append(returner.getChild(0).get("name") + retType + END_STMT);
@@ -457,7 +470,11 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
             code.append(ASSIGN + type + SPACE);
         }
 
+
         if (node.getParent().getKind().equals("BinaryExpr") || node.getParent().getKind().equals("AssignStmt")){
+            code.append("invokevirtual(");
+        }
+        else if (node.getChild(0).get("name").equals("this")){
             code.append("invokevirtual(");
         }
         else code.append("invokestatic(");
