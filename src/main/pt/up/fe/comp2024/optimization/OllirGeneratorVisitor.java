@@ -325,14 +325,15 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         code.append("import ");
         var first = 0;
 
-
-        for (var value : node.getObjectAsList("importName")) {
-            if (first == 0) {
-                code.append(value);
-                first++;
-                continue;
+        if (node.hasAttribute("importName")) {
+            for (var value : node.getObjectAsList("importName")) {
+                if (first == 0) {
+                    code.append(value);
+                    first++;
+                    continue;
+                }
+                code.append("." + value);
             }
-            code.append("." + value);
         }
 
 
