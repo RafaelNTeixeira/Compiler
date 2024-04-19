@@ -120,7 +120,15 @@ public class JasminGenerator {
         code.append(TAB).append(" ").append("invokespecial ");
         if (ollirResult.getOllirClass().getSuperClass() != null) {
             var superName = ollirResult.getOllirClass().getSuperClass();
-            code.append(superName);
+            if (superName.equals("this")) code.append(className);
+            else {
+                for (var importClass : ollirResult.getOllirClass().getImports()) {
+                    if (importClass.endsWith(superName)) {
+                        var test = importClass.replace(".", "/");
+                        code.append(test);
+                    }
+                }
+            }
         } else {
             code.append("java/lang/Object");
         }
@@ -179,7 +187,7 @@ public class JasminGenerator {
         return code.toString();
     }
 
-    private String getJasminType(Type type) {
+        private String getJasminType(Type type) {
         String jasminType;
         String typeName = type.getTypeOfElement().name();
 
@@ -199,22 +207,9 @@ public class JasminGenerator {
     private String getObjectType(Type type) {
         var code = new StringBuilder();
         var name = ((ClassType) type).getName();
-        var className = ollirResult.getOllirClass().getClassName();
-        code.append("L");
-        if (name.equals("this")){
-            code.append(className);
-            return code.toString();
-        }
+        //var className = ollirResult.getOllirClass().getClassName();
+        code.append("L").append(name).append(";");
 
-        for (var imports : ollirResult.getOllirClass().getImports()) {
-            if (imports.endsWith(className)) {
-                imports.replaceAll("\\.", "/");
-                code.append(imports);
-                return code.toString();
-            }
-        }
-
-        code.append(name);
         return code.toString();
     }
 
