@@ -173,4 +173,25 @@ public class SemanticAnalysisTest {
         TestUtils.mustFail(result);
         System.out.println(result.getReports());
     }
+
+    @Test
+    public void arraytest1() {
+        var result = TestUtils
+                .analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/test.jmm"));
+        TestUtils.noErrors(result);
+    }
+
+    @Test
+    public void arraytest2() {
+        var result = TestUtils
+                .analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/test2.jmm"));
+        TestUtils.noErrors(result);
+    }
+
+    @Test
+    public void arraytest3() {
+        var result = TestUtils
+                .analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/test3.jmm"));
+        TestUtils.noErrors(result);
+    }
 }
