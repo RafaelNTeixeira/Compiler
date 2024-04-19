@@ -457,17 +457,11 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
             code.append(ASSIGN + type + SPACE);
         }
 
-        if (node.getChild(0).get("name").equals("this")){
+        if (node.getParent().getKind().equals("BinaryExpr") || node.getParent().getKind().equals("AssignStmt")){
             code.append("invokevirtual(");
         }
-        else{
-            if (checkIfImport(node.getChild(0).get("name"))){
-                code.append("invokestatic(");
-            }
-            else {
-                code.append("invokevirtual(");
-            }
-        }
+        else code.append("invokestatic(");
+
 
         code.append(node.getChild(0).get("name"));
         if (node.getParent().getKind().equals("AssignStmt")){
