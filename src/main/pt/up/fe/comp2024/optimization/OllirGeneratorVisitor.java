@@ -473,7 +473,10 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         boolean virtual=false;
         if (node.getChild(0).get("name").equals("this")){
-            code.append("invokestatic(");
+            code.append("invokevirtual(");
+            node.getChild(0).put("value", table.getClassName());
+            virtual=true;
+
         }
         else{
             if (checkIfImport(node.getChild(0).get("name"))){
