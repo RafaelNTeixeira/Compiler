@@ -73,9 +73,11 @@ public class astOpValidator extends AnalysisVisitor {
             var fields = symbolTable.getFields();
             for (int i = 0; i < fields.size(); i++) {
                 for (int j = i + 1; j < fields.size(); j++) {
-                    if (fields.get(i).getName().equals(fields.get(j).getName())) {
-                        valid = false;
-                        break;
+                    if (fields.get(i) != null && fields.get(j) != null) {
+                        if (fields.get(i).getName().equals(fields.get(j).getName())) {
+                            valid = false;
+                            break;
+                        }
                     }
                 }
             }
@@ -115,8 +117,10 @@ public class astOpValidator extends AnalysisVisitor {
 
         // contar valores booleanos numa VarRefExpr
         for (var var : varRefExpressions) {
-            if (var.get("name").equals("true") || var.get("name").equals("false")) {
-                countBoolConsts++;
+            if (var.hasAttribute("name")) {
+                if (var.get("name").equals("true") || var.get("name").equals("false")) {
+                    countBoolConsts++;
+                }
             }
             else {
                 // se forem variáveis locais
@@ -176,17 +180,23 @@ public class astOpValidator extends AnalysisVisitor {
 
         if (countIntConsts > 0) {
             // operador && não funciona com ints
-            if (binaryOpNode.get("op").equals("&&")) valid = false;
+            if (binaryOpNode.hasAttribute("op")) {
+                if (binaryOpNode.get("op").equals("&&")) valid = false;
+            }
         }
 
         if (countBoolConsts > 0 && countIntConsts == 0) {
             // operador < só funciona com ints
-            if (binaryOpNode.get("op").equals("<")) valid = false;
+            if (binaryOpNode.hasAttribute("op")) {
+                if (binaryOpNode.get("op").equals("<")) valid = false;
+            }
         }
 
         if ((countBoolConsts > 0 && countIntConsts > 0)) {
-            if (binaryOpNode.get("op").equals("<")) valid = false;
-            else if (binaryOpNode.get("op").equals("&&")) valid = false;
+            if (binaryOpNode.hasAttribute("op")) {
+                if (binaryOpNode.get("op").equals("<")) valid = false;
+                else if (binaryOpNode.get("op").equals("&&")) valid = false;
+            }
         }
 
         if (!valid) {
@@ -352,36 +362,45 @@ public class astOpValidator extends AnalysisVisitor {
         boolean valid = true;
 
         // Verificar se é utilizado em array types. Se não for, dá erro
-        var varUsedOnNode = lengthNode.getChildren().get(0);
-        // Verificar se length é chamada em variáveis locais
-        for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-            if (varUsedOnNode.hasAttribute("name")) {
-                if (localVar.getName().equals(varUsedOnNode.get("name"))) {
-                    if (!localVar.getType().isArray()) {
-                        valid = false;
-                    }
-                }
-            }
-        }
-        if (valid) {
-            // Verificar se length é chamada em parametros da função atual
-            for (var param : symbolTable.getParameters(currentMethod)) {
-                if (varUsedOnNode.hasAttribute("name")) {
-                    if (param.getName().equals(varUsedOnNode.get("name"))) {
-                        if (!param.getType().isArray()) {
-                            valid = false;
+
+        if (!lengthNode.getChildren().isEmpty()) {
+            var varUsedOnNode = lengthNode.getChildren().get(0);
+            // Verificar se length é chamada em variáveis locais
+            if (symbolTable.getLocalVariables(currentMethod) != null) {
+                for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                    if (varUsedOnNode.hasAttribute("name")) {
+                        if (localVar.getName().equals(varUsedOnNode.get("name"))) {
+                            if (!localVar.getType().isArray()) {
+                                valid = false;
+                            }
                         }
                     }
                 }
             }
-        }
-        if (valid) {
-            // Verificar se length é chamada em fields da classe
-            for (var field : symbolTable.getFields()) {
-                if (varUsedOnNode.hasAttribute("name")) {
-                    if (field.getName().equals(varUsedOnNode.get("name"))) {
-                        if (!field.getType().isArray()) {
-                            valid = false;
+            if (valid) {
+                // Verificar se length é chamada em parametros da função atual
+                if (symbolTable.getParameters(currentMethod) != null) {
+                    for (var param : symbolTable.getParameters(currentMethod)) {
+                        if (varUsedOnNode.hasAttribute("name")) {
+                            if (param.getName().equals(varUsedOnNode.get("name"))) {
+                                if (!param.getType().isArray()) {
+                                    valid = false;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (valid) {
+                // Verificar se length é chamada em fields da classe
+                if (symbolTable.getFields() != null) {
+                    for (var field : symbolTable.getFields()) {
+                        if (varUsedOnNode.hasAttribute("name")) {
+                            if (field.getName().equals(varUsedOnNode.get("name"))) {
+                                if (!field.getType().isArray()) {
+                                    valid = false;
+                                }
+                            }
                         }
                     }
                 }
@@ -474,93 +493,98 @@ public class astOpValidator extends AnalysisVisitor {
         boolean valid = true;
 
         // Se faz uma chamada a uma função
-        if (expressionNode.getChildren().get(0).getKind().equals("FunctionCall")) {
-            if (expressionNode.getChildren().get(0).hasAttribute("methodName")) {
-                var methodNameCalled = expressionNode.getChildren().get(0).get("methodName");
-                String varTypeThatCalledFunction = "";
-                boolean methodFound = false;
-                boolean cameFromImport = false;
+        if (!expressionNode.getChildren().isEmpty()) {
+            if (expressionNode.getChildren().get(0).getKind().equals("FunctionCall")) {
+                if (expressionNode.getChildren().get(0).hasAttribute("methodName")) {
+                    var methodNameCalled = expressionNode.getChildren().get(0).get("methodName");
+                    String varTypeThatCalledFunction = "";
+                    boolean methodFound = false;
+                    boolean cameFromImport = false;
 
-                // Verificar se a variável que chama o método existe nas variáveis locais
-                var varThatCalledMethod = expressionNode.getChildren().get(0).getChildren("VarRefExpr").get(0);
-                if (symbolTable.getLocalVariables(currentMethod) != null) {
-                    for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                        if (varThatCalledMethod.hasAttribute("name")) {
-                            if (localVar.getName().equals(varThatCalledMethod.get("name"))) {
-                                varTypeThatCalledFunction = localVar.getType().getName();
-                                break;
-                            }
-                        }
-                    }
-                }
-                // Verificar se a variável que chama o método existe nos parâmetros
-                if (symbolTable.getParameters(currentMethod) != null) {
-                    for (var param : symbolTable.getParameters(currentMethod)) {
-                        if (varThatCalledMethod.hasAttribute("name")) {
-                            if (param.getName().equals(varThatCalledMethod.get("name"))) {
-                                varTypeThatCalledFunction = param.getType().getName();
-                                break;
-                            }
-                        }
-                    }
-                }
-                // Verificar se a variável que chama o método existe nos fields
-                if (symbolTable.getFields() != null) {
-                    for (var field : symbolTable.getFields()) {
-                        if (varThatCalledMethod.hasAttribute("name")) {
-                            if (field.getName().equals(varThatCalledMethod.get("name"))) {
-                                varTypeThatCalledFunction = field.getType().getName();
-                                break;
-                            }
-                        }
-                    }
-                }
-                // Verificar se a variável que chama o método existe nos imports
-                if (symbolTable.getImports() != null) {
-                    for (var importName : symbolTable.getImports()) {
-                        // Verificar se a variável que chama o método tem um tipo importado
-                        if (importName.equals(varTypeThatCalledFunction) || importName.equals(varThatCalledMethod.get("name"))) {
-                            cameFromImport = true;
-                            break;
-                        }
-
-                        // Verificar se a variável que chama o método tem o tipo da classe que extende uma superclasse, sendo esta importada
-                        else if (varTypeThatCalledFunction.equals(symbolTable.getClassName())) {
-                            if (!symbolTable.getSuper().isEmpty()) {
-                                if (importName.equals(symbolTable.getSuper())) {
-                                    cameFromImport = true;
+                    // Verificar se a variável que chama o método existe nas variáveis locais
+                    var varThatCalledMethod = expressionNode.getChildren().get(0).getChildren("VarRefExpr").get(0);
+                    if (symbolTable.getLocalVariables(currentMethod) != null) {
+                        for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                            if (varThatCalledMethod.hasAttribute("name")) {
+                                if (localVar.getName().equals(varThatCalledMethod.get("name"))) {
+                                    varTypeThatCalledFunction = localVar.getType().getName();
                                     break;
                                 }
                             }
-                        } else {
-                            valid = false;
                         }
                     }
-                }
+                    // Verificar se a variável que chama o método existe nos parâmetros
+                    if (symbolTable.getParameters(currentMethod) != null) {
+                        for (var param : symbolTable.getParameters(currentMethod)) {
+                            if (varThatCalledMethod.hasAttribute("name")) {
+                                if (param.getName().equals(varThatCalledMethod.get("name"))) {
+                                    varTypeThatCalledFunction = param.getType().getName();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    // Verificar se a variável que chama o método existe nos fields
+                    if (symbolTable.getFields() != null) {
+                        for (var field : symbolTable.getFields()) {
+                            if (varThatCalledMethod.hasAttribute("name")) {
+                                if (field.getName().equals(varThatCalledMethod.get("name"))) {
+                                    varTypeThatCalledFunction = field.getType().getName();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    // Verificar se a variável que chama o método existe nos imports
+                    if (symbolTable.getImports() != null) {
+                        for (var importName : symbolTable.getImports()) {
+                            // Verificar se a variável que chama o método tem um tipo importado
+                            if (importName.equals(varTypeThatCalledFunction) || (varThatCalledMethod.hasAttribute("name") && importName.equals(varThatCalledMethod.get("name")))) {
+                                cameFromImport = true;
+                                break;
+                            }
 
-                // se a variável local que chamou a função possui o tipo do import, assume-se que a função chamada já existe
-                if (!cameFromImport) {
-                    // Verificar se o método chamado existe
-                    for (var method : symbolTable.getMethods()) {
-                        if (methodNameCalled.equals(method)) {
-                            methodFound = true;
-                            break;
+                            // Verificar se a variável que chama o método tem o tipo da classe que extende uma superclasse, sendo esta importada
+                            else if (varTypeThatCalledFunction.equals(symbolTable.getClassName())) {
+                                if (!symbolTable.getSuper().isEmpty()) {
+                                    if (importName.equals(symbolTable.getSuper())) {
+                                        cameFromImport = true;
+                                        break;
+                                    }
+                                }
+                            } else {
+                                valid = false;
+                            }
                         }
                     }
-                    if (!methodFound) valid = false;
+
+                    // se a variável local que chamou a função possui o tipo do import, assume-se que a função chamada já existe
+                    if (!cameFromImport) {
+                        // Verificar se o método chamado existe
+                        if (symbolTable.getMethods() != null) {
+                            for (var method : symbolTable.getMethods()) {
+                                if (methodNameCalled.equals(method)) {
+                                    methodFound = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!methodFound) valid = false;
+                    }
                 }
             }
         }
 
         // Se for um Kind FunctionCall
         if (expressionNode.getKind().equals("FunctionCall")) {
-            for (var method : this.methods) {
-                if (method.get("methodName").equals(expressionNode.get("methodName"))) {
-                    if (!method.hasAttribute("type")) continue;
-                    expressionNode.put("type", method.get("type"));
-                    break;
+            if (this.methods != null) {
+                for (var method : this.methods) {
+                    if (method.get("methodName").equals(expressionNode.get("methodName"))) {
+                        if (!method.hasAttribute("type")) continue;
+                        expressionNode.put("type", method.get("type"));
+                        break;
+                    }
                 }
-
             }
 
             // verificar se os tipos dados como parametros são válidos
