@@ -30,6 +30,38 @@ public class OptUtils {
         return tempNumber;
     }
 
+    public static String getCurrTemp() {
+
+        return getCurrTemp("tmp");
+    }
+
+    public static String getCurrTemp(String prefix) {
+
+        return prefix + getCurrTempNum();
+    }
+
+    public static int getCurrTempNum() {
+
+        return tempNumber;
+    }
+
+    public static String getPrevTemp() {
+
+        return getPrevTemp("tmp");
+    }
+
+    public static String getPrevTemp(String prefix) {
+
+        return prefix + getPrevTempNum();
+    }
+
+    public static int getPrevTempNum() {
+
+        return tempNumber -1;
+    }
+
+
+
     public static String toOllirType(JmmNode typeNode) {
 
         //TYPE.checkOrThrow(typeNode);

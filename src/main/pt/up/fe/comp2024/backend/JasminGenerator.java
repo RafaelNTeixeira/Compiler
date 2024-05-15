@@ -467,23 +467,10 @@ public class JasminGenerator {
             }
             code.append(firstName);
         }
-        /*
-        if (callInstruction.getArguments().isEmpty()
-                || callInstruction.getArguments().get(0).getType().getTypeOfElement().equals(ElementType.THIS)){
-            code.append(className);
-        }
-        else {
-            for (var importClass : ollirResult.getOllirClass().getImports()) {
-                if (importClass.endsWith(className)) {
-                    className.replaceAll("\\.", "/");
-                }
-            }
-            code.append(className);
-        }
-         */
+
         code.append("/<init>(");
         for (var agr :callInstruction.getArguments()){
-            code.append(generators.apply(agr));
+            code.append(getJasminType(agr.getType()));
         }
         code.append(")");
         var retType = getJasminType(callInstruction.getReturnType());
