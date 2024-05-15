@@ -175,6 +175,14 @@ public class SemanticAnalysisTest {
     }
 
     @Test
+    public void fieldOnStatic() {
+        var result = TestUtils
+                .analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/FieldOnStatic.jmm"));
+        TestUtils.mustFail(result);
+        System.out.println(result.getReports());
+    }
+
+    @Test
     public void arraytest1() {
         var result = TestUtils
                 .analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/test.jmm"));

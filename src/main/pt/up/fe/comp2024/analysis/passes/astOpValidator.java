@@ -15,22 +15,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Checks if the type of the expression in a return statement is compatible with the method return type.
- *
- * @author JBispo
- */
 public class astOpValidator extends AnalysisVisitor {
-
     private String currentMethod;
-
     private List<JmmNode> methods = new ArrayList<JmmNode>();
     List<List<String>> returnTypes = new ArrayList<>();
-
     private List<String> imports = new ArrayList<>();
-
     private List<Pair<JmmNode, JmmNode>> functionsCalled = new ArrayList<>(); // Guarda o node da chamada feita a uma função e o node da declaração da variável que chama a função
-
     private List<Pair<String, List<Symbol>>> allLocalVariables = new ArrayList<>(); // Guarda o nome da função e a lista das suas variáveis locais
 
     @Override
@@ -1881,6 +1871,23 @@ public class astOpValidator extends AnalysisVisitor {
                             valid = false;
                             break;
                         }
+                    }
+                }
+            }
+
+            // Se o método main utilizar um field num assign, dá erro por ser static
+            if (table.getFields() != null) {
+                var assigns = method.getDescendants("AssignStmt");
+                if (!assigns.isEmpty()) {
+                    for (var assignStmt : assigns) {
+                        var leftVar = assignStmt.getChildren().get(0);
+                        var rightVar = assignStmt.getChildren().get(1);
+                        for (var field : table.getFields()) {
+                            if (field.getName().equals(leftVar.get("name"))) valid = false;
+                            if (field.getName().equals(rightVar.get("name"))) valid = false;
+                            if (!valid) break;
+                        }
+                        if (!valid) break;
                     }
                 }
             }
