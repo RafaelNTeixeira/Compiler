@@ -791,15 +791,19 @@ public class astOpValidator extends AnalysisVisitor {
         // variável da esquerda é declaração do import
         if (symbolTable.getImports() != null) {
             for (var importName : symbolTable.getImports()) {
-                if (importName.equals(varLeftType)) {
-                    found = true;
-                    break;
+                if (!varLeftType.isEmpty()) {
+                    if (importName.equals(varLeftType)) {
+                        found = true;
+                        break;
+                    }
                 }
             }
         }
         // se for do tipo da classe
-        if (varLeftType.equals(symbolTable.getClassName())) {
-            found = true;
+        if (symbolTable.getClassName() != null) {
+            if (varLeftType.equals(symbolTable.getClassName())) {
+                found = true;
+            }
         }
         if (!found) valid = false;
 
@@ -828,10 +832,10 @@ public class astOpValidator extends AnalysisVisitor {
         if (!arrayInitNode.getParent().getChildren("VarRefExpr").isEmpty()) {
             var varStoring = arrayInitNode.getParent().getChildren("VarRefExpr").get(0);
             // Se for uma variável local
-
             if (symbolTable.getLocalVariables(currentMethod) != null) {
                 for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
                     // se a variável que está a guardar for array é aceite
+                    if (!varStoring.hasAttribute("name")) continue;
                     if (localVar.getName().equals(varStoring.get("name")) && localVar.getType().isArray()) {
                         // se esta for do tipo int
                         if (localVar.getType().getName().equals("int")) {
@@ -843,7 +847,6 @@ public class astOpValidator extends AnalysisVisitor {
                                 type = "int";
                             }
                         }
-                        // Isto é válido?
                         if (localVar.getType().getName().equals("boolean")) {
                             for (var valueGiven : valuesGiven) {
                                 if (valueGiven.hasAttribute("name")) {
@@ -891,13 +894,15 @@ public class astOpValidator extends AnalysisVisitor {
         // a condição é feita com uma variável
         else if (operatorUsedKind.equals("VarRefExpr")) {
             // procuramos pela variável utilizada para estudar o seu tipo
-            for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                if (operatorUsed.hasAttribute("name")) {
-                    if (localVar.getName().equals(operatorUsed.get("name"))) {
-                        // se não for do tipo booleano dá erro
-                        if (!localVar.getType().getName().equals("boolean")) {
-                            valid = false;
-                            break;
+            if (symbolTable.getLocalVariables(currentMethod) != null) {
+                for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                    if (operatorUsed.hasAttribute("name")) {
+                        if (localVar.getName().equals(operatorUsed.get("name"))) {
+                            // se não for do tipo booleano dá erro
+                            if (!localVar.getType().getName().equals("boolean")) {
+                                valid = false;
+                                break;
+                            }
                         }
                     }
                 }
@@ -924,22 +929,23 @@ public class astOpValidator extends AnalysisVisitor {
         int binaryExprCounter = 0;
         int binaryOpCounter = 0;
 
-        var operatorUsed = ifConditionNode.getChildren().get(0).getKind();
-        // se conter BinaryExpr (conta aritmética sem operadores de comparação), é suposto dar erro
-        if (operatorUsed.equals("BinaryExpr")) {
-            valid = false;
-        }
-        // se for uma operação de comparação
-        else if (operatorUsed.equals("BinaryOp")) {
-            var operations = ifConditionNode.getDescendants();
-            var operationNode = ifConditionNode.getChildren("BinaryOp").get(0);
+        if (!ifConditionNode.getChildren().isEmpty()) {
+            var operatorUsed = ifConditionNode.getChildren().get(0).getKind();
+            // se conter BinaryExpr (conta aritmética sem operadores de comparação), é suposto dar erro
+            if (operatorUsed.equals("BinaryExpr")) {
+                valid = false;
+            }
+            // se for uma operação de comparação
+            else if (operatorUsed.equals("BinaryOp")) {
+                var operations = ifConditionNode.getDescendants();
+                var operationNode = ifConditionNode.getChildren("BinaryOp").get(0);
 
-            for (var operation : operations) {
-                if (operation.getKind().equals("BinaryExpr")) {
-                    binaryExprCounter++;
-                }
-                else if (operation.getKind().equals("BinaryOp")) {
-                    binaryOpCounter++;
+                for (var operation : operations) {
+                    if (operation.getKind().equals("BinaryExpr")) {
+                        binaryExprCounter++;
+                    } else if (operation.getKind().equals("BinaryOp")) {
+                        binaryOpCounter++;
+                    }
                 }
             }
         }
@@ -1009,29 +1015,32 @@ public class astOpValidator extends AnalysisVisitor {
         boolean isDeclared = false;
 
         // verificar se à esquerda tem variável
-        if (!assignStatm.getChildren().get(0).getKind().equals("VarRefExpr")) {
-            valid = false;
+        if (!assignStatm.getChildren().isEmpty()) {
+            if (!assignStatm.getChildren().get(0).getKind().equals("VarRefExpr")) {
+                valid = false;
+            }
         }
 
         // verificar se no caso de variáveis, estas são declaradas
-        var localVariables = symbolTable.getLocalVariables(currentMethod);
-        if (localVariables != null) {
-            for (var localVar : localVariables) {
-                if (assignElements.get(0).getKind().equals("VarRefExpr")) {
-                    if (assignElements.get(0).hasAttribute("name")) {
-                        if (localVar.getName().equals(assignElements.get(0).get("name"))) {
-                            assignStatm.getChildren().get(0).put("type", localVar.getType().getName());
-                            isDeclared = true;
-                            break;
+        if (symbolTable.getLocalVariables(currentMethod) != null) {
+            var localVariables = symbolTable.getLocalVariables(currentMethod);
+            if (localVariables != null) {
+                for (var localVar : localVariables) {
+                    if (assignElements.get(0).getKind().equals("VarRefExpr")) {
+                        if (assignElements.get(0).hasAttribute("name")) {
+                            if (localVar.getName().equals(assignElements.get(0).get("name"))) {
+                                assignStatm.getChildren().get(0).put("type", localVar.getType().getName());
+                                isDeclared = true;
+                                break;
+                            }
                         }
-                    }
-                }
-                else if (assignElements.get(0).getKind().equals("IntegerLiteral")) {
-                    if (assignElements.get(0).hasAttribute("name")) {
-                        if (localVar.getName().equals(assignElements.get(0).get("name"))) {
-                            assignStatm.getChildren().get(0).put("type", "int");
-                            isDeclared = true;
-                            break;
+                    } else if (assignElements.get(0).getKind().equals("IntegerLiteral")) {
+                        if (assignElements.get(0).hasAttribute("name")) {
+                            if (localVar.getName().equals(assignElements.get(0).get("name"))) {
+                                assignStatm.getChildren().get(0).put("type", "int");
+                                isDeclared = true;
+                                break;
+                            }
                         }
                     }
                 }
