@@ -1,14 +1,8 @@
 class ReturnIntOnBooleanInvalid {
+    int c;
 
-    public int bar() {
-        int b;
-        b = 2;
-        return b;
-    }
-
-    public boolean foo() {
-        int b;
-        b = bar();
-        return b;
+    public boolean bar() {
+        c = 4;
+        return c;
     }
 }

@@ -1098,57 +1098,59 @@ public class astOpValidator extends AnalysisVisitor {
         if (!isDeclared) valid = false;
 
         // Lidar com arrays
-        for (var localVar : localsVar) {
-            // assignElement.get(0) é sempre igual à variável na qual guardamos valores
-            if (assignElements.get(0).hasAttribute("name")) {
-                if (localVar.getName().equals(assignElements.get(0).get("name"))) {
-                    assignStatm.getChildren().get(0).put("type", localVar.getType().getName());
-                    // Se for do tipo array só pode dar assign a elementos do tipo array
-                    if (localVar.getType().isArray()) {
-                        assignStatm.getChildren().get(0).put("isArray", "true");
-                        assignStatm.put("isArray", "true");
-                        // Testar para quando o assign é feito com uma chamada a uma função que retorna um array
-                        if (assignElements.get(1).getKind().equals("FunctionCall")) {
-                            var functionCallReturn = symbolTable.getReturnType(assignElements.get(1).get("methodName"));
-                            var retType = functionCallReturn.getName();
-                            var isRetArray = functionCallReturn.isArray();
-                            // como estamos a verificar se uma variável array recebe um array na chamada a uma função, se no retorno não receber array dá erro
-                            if (!isRetArray) {
-                                valid = false;
-                                break;
-                            }
-                            // se os tipos forem diferentes, dá erro
-                            if (!retType.equals(localVar.getType().getName())) {
-                                valid = false;
-                                break;
-                            }
-                            assignStatm.put("type", retType);
-                        }
-                        // Testar para quando o assign é feito com um array
-                        else if (!assignElements.get(1).getKind().equals("ArrayInit") && !assignElements.get(1).getKind().equals("NewArray")) {
-                            valid = false;
-                            break;
-                        }
-                        assignStatm.put("type", localVar.getType().getName());
-                    }
-                    // Se não for do tipo array, não pode dar assign a elementos do tipo array
-                    else {
-                        if (assignElements.get(1).getKind().equals("ArrayInit") || assignElements.get(1).getKind().equals("NewArray")) {
-                            valid = false;
-                            break;
-                        }
-                        // Ex: caso em que a = a[10] e 'a' é do tipo int
-                        // se a variável for do tipo array
-                        if (assignElements.get(1).getKind().equals("ArrayAccess")) {
-                            // e tiver o mesmo nome que a variável da direita, dá erro (Variável esquerda nesta fase já não é array)
-                            if (assignElements.get(1).getChildren().get(0).hasAttribute("name") && assignElements.get(0).hasAttribute("name")) {
-                                if (assignElements.get(1).getChildren().get(0).get("name").equals(assignElements.get(0).get("name"))) {
+        if (localsVar != null) {
+            for (var localVar : localsVar) {
+                // assignElement.get(0) é sempre igual à variável na qual guardamos valores
+                if (assignElements.get(0).hasAttribute("name")) {
+                    if (localVar.getName().equals(assignElements.get(0).get("name"))) {
+                        assignStatm.getChildren().get(0).put("type", localVar.getType().getName());
+                        // Se for do tipo array só pode dar assign a elementos do tipo array
+                        if (localVar.getType().isArray()) {
+                            assignStatm.getChildren().get(0).put("isArray", "true");
+                            assignStatm.put("isArray", "true");
+                            // Testar para quando o assign é feito com uma chamada a uma função que retorna um array
+                            if (assignElements.get(1).getKind().equals("FunctionCall")) {
+                                var functionCallReturn = symbolTable.getReturnType(assignElements.get(1).get("methodName"));
+                                var retType = functionCallReturn.getName();
+                                var isRetArray = functionCallReturn.isArray();
+                                // como estamos a verificar se uma variável array recebe um array na chamada a uma função, se no retorno não receber array dá erro
+                                if (!isRetArray) {
                                     valid = false;
                                     break;
                                 }
+                                // se os tipos forem diferentes, dá erro
+                                if (!retType.equals(localVar.getType().getName())) {
+                                    valid = false;
+                                    break;
+                                }
+                                assignStatm.put("type", retType);
                             }
+                            // Testar para quando o assign é feito com um array
+                            else if (!assignElements.get(1).getKind().equals("ArrayInit") && !assignElements.get(1).getKind().equals("NewArray")) {
+                                valid = false;
+                                break;
+                            }
+                            assignStatm.put("type", localVar.getType().getName());
                         }
-                        assignStatm.put("type", localVar.getType().getName());
+                        // Se não for do tipo array, não pode dar assign a elementos do tipo array
+                        else {
+                            if (assignElements.get(1).getKind().equals("ArrayInit") || assignElements.get(1).getKind().equals("NewArray")) {
+                                valid = false;
+                                break;
+                            }
+                            // Ex: caso em que a = a[10] e 'a' é do tipo int
+                            // se a variável for do tipo array
+                            if (assignElements.get(1).getKind().equals("ArrayAccess")) {
+                                // e tiver o mesmo nome que a variável da direita, dá erro (Variável esquerda nesta fase já não é array)
+                                if (assignElements.get(1).getChildren().get(0).hasAttribute("name") && assignElements.get(0).hasAttribute("name")) {
+                                    if (assignElements.get(1).getChildren().get(0).get("name").equals(assignElements.get(0).get("name"))) {
+                                        valid = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            assignStatm.put("type", localVar.getType().getName());
+                        }
                     }
                 }
             }
@@ -1156,12 +1158,14 @@ public class astOpValidator extends AnalysisVisitor {
 
         // Para variáveis que dão assign a inteiros
         if (assignElements.get(1).getKind().equals("IntegerLiteral")) {
-            for (var localVar : localsVar) {
-                if (assignElements.get(0).hasAttribute("name")) {
-                    if (localVar.getName().equals(assignElements.get(0).get("name"))) {
-                        var expectedValueType = localVar.getType().getName();
-                        if (!expectedValueType.equals("int")) {
-                            valid = false;
+            if (localsVar != null) {
+                for (var localVar : localsVar) {
+                    if (assignElements.get(0).hasAttribute("name")) {
+                        if (localVar.getName().equals(assignElements.get(0).get("name"))) {
+                            var expectedValueType = localVar.getType().getName();
+                            if (!expectedValueType.equals("int")) {
+                                valid = false;
+                            }
                         }
                     }
                 }
@@ -1170,52 +1174,54 @@ public class astOpValidator extends AnalysisVisitor {
         // assign a uma variável (Ex: varLeft = varRight) ou constante booleana (varLeft = constant)
         else if (assignElements.get(1).getKind().equals("VarRefExpr")) {
             // pesquisa-se pela variável que recebe o valor
-            for (var varLeft : localsVar) {
-                if (assignElements.get(0).get("name").equals(varLeft.getName())) {
-                    // se for constante booleana
-                    if (assignElements.get(1).hasAttribute("name")) {
-                        if (assignElements.get(1).get("name").equals("true") || assignElements.get(1).get("name").equals("false")) {
-                            if (!varLeft.getType().getName().equals("boolean")) {
-                                valid = false;
-                                break;
+            if (localsVar != null) {
+                for (var varLeft : localsVar) {
+                    if (assignElements.get(0).get("name").equals(varLeft.getName())) {
+                        // se for constante booleana
+                        if (assignElements.get(1).hasAttribute("name")) {
+                            if (assignElements.get(1).get("name").equals("true") || assignElements.get(1).get("name").equals("false")) {
+                                if (!varLeft.getType().getName().equals("boolean")) {
+                                    valid = false;
+                                    break;
+                                }
                             }
                         }
-                    }
 
-                    // pesquisa-se pela variável que dá o valor
-                    for (var varRight : localsVar) {
-                        if (assignElements.get(1).hasAttribute("name")) {
-                            if (assignElements.get(1).get("name").equals(varRight.getName())) {
-                                // se tiverem tipos diferentes
-                                if (!varLeft.getType().getName().equals(varRight.getType().getName())) {
-                                    // se a variável da direita for um objeto da classe
-                                    if (varRight.getType().getName().equals(symbolTable.getClassName())) {
-                                        // e se a variável da esquerda for um import
-                                        for (var importName : importNames) {
-                                            if (varLeft.getType().getName().equals(importName)) {
-                                                // se esse import não extender classe da variável da direita, dá erro
-                                                if (!varLeft.getType().getName().equals(symbolTable.getSuper())) {
-                                                    valid = false;
+                        // pesquisa-se pela variável que dá o valor
+                        for (var varRight : localsVar) {
+                            if (assignElements.get(1).hasAttribute("name")) {
+                                if (assignElements.get(1).get("name").equals(varRight.getName())) {
+                                    // se tiverem tipos diferentes
+                                    if (!varLeft.getType().getName().equals(varRight.getType().getName())) {
+                                        // se a variável da direita for um objeto da classe
+                                        if (varRight.getType().getName().equals(symbolTable.getClassName())) {
+                                            // e se a variável da esquerda for um import
+                                            for (var importName : importNames) {
+                                                if (varLeft.getType().getName().equals(importName)) {
+                                                    // se esse import não extender classe da variável da direita, dá erro
+                                                    if (!varLeft.getType().getName().equals(symbolTable.getSuper())) {
+                                                        valid = false;
+                                                    }
+                                                }
+
+                                            }
+                                        } else {
+                                            // verificar se ambas as variáveis provêm de imports
+                                            var foundImportLeft = false;
+                                            var foundImportRight = false;
+                                            if (symbolTable.getImports() != null) {
+                                                for (var importName : symbolTable.getImports()) {
+                                                    if (varLeft.getType().getName().equals(importName))
+                                                        foundImportLeft = true;
+                                                    else if (varRight.getType().getName().equals(importName))
+                                                        foundImportRight = true;
+                                                    if (foundImportLeft && foundImportRight) break;
                                                 }
                                             }
-
-                                        }
-                                    } else {
-                                        // verificar se ambas as variáveis provêm de imports
-                                        var foundImportLeft = false;
-                                        var foundImportRight = false;
-                                        if (symbolTable.getImports() != null) {
-                                            for (var importName : symbolTable.getImports()) {
-                                                if (varLeft.getType().getName().equals(importName))
-                                                    foundImportLeft = true;
-                                                else if (varRight.getType().getName().equals(importName))
-                                                    foundImportRight = true;
-                                                if (foundImportLeft && foundImportRight) break;
+                                            if ((foundImportLeft && !foundImportRight) || (!foundImportLeft && foundImportRight)) {
+                                                valid = false;
+                                                break;
                                             }
-                                        }
-                                        if ((foundImportLeft && !foundImportRight) || (!foundImportLeft && foundImportRight)) {
-                                            valid = false;
-                                            break;
                                         }
                                     }
                                 }
@@ -1463,7 +1469,7 @@ public class astOpValidator extends AnalysisVisitor {
             }
         }
 
-        // se o return for uma chamada a uma função. Verificar se o valor recebido é o tipo especificado da função atual
+        // Se o return for uma chamada a uma função. Verificar se o valor recebido é o tipo especificado da função atual
         JmmNode calledFunction = null;
         JmmNode currentFunction = null;
         List<JmmNode> paramsGiven = new ArrayList<JmmNode>();
