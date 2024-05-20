@@ -1878,19 +1878,19 @@ public class astOpValidator extends AnalysisVisitor {
 
         // validar a estrutura do método main
         if (currentMethod.equals("main")) {
-            // só pode ter um node Param como node filho
+            // só pode ter um node Param como node filho (args)
             if (method.getChildren("Param").size() > 1) valid = false;
 
             var mainParam = method.getChildren("Param").get(0);
             var paramIsArray = !mainParam.getChildren("Array").isEmpty();
-            // tem que ser array senão dá erro
+            // args tem que ser array senão dá erro
             if (!paramIsArray) {
                 valid = false;
             }
             else {
-                // se o parametro for array
+                // Se o parâmetro for array
                 var arrayKind = mainParam.getChildren("Array").get(0);
-                // tem que ser do tipo String
+                // args tem que ser do tipo String
                 if (!arrayKind.getChildren().get(0).getKind().equals("String")) {
                     valid = false;
                 }

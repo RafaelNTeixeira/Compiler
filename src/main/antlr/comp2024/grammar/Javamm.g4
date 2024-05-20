@@ -46,6 +46,7 @@ ELSEIF : 'else if' ;
 WHILE : 'while' ;
 FOR : 'for' ;
 MAIN: 'main' ;
+LENGHT: 'length' ;
 
 INTEGER : ([0] | [1-9][0-9]*) ;
 ID : [a-zA-Z_$][a-zA-Z$_0-9]* ;
@@ -123,7 +124,7 @@ expr
     | NEW className=ID LPAREN (expr (COMMA expr)* )? RPAREN #NewClass //
     | expr LSQUARE expr RSQUARE #ArrayAccess //
     | LSQUARE ( expr ( COMMA expr )* )? RSQUARE #ArrayInit //
-    | expr DOT ID #Length //
+    | expr DOT LENGTH #Length //
     | expr op=(MUL | DIV) expr #BinaryExpr //
     | expr op=(ADD | SUB) expr #BinaryExpr //
     | expr op=('<=' | '<' | '>' | '>=' | '==' | '!=' | '+=' | '-=' | '*=' | '/=') expr #BinaryOp //
