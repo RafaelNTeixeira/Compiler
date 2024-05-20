@@ -301,7 +301,7 @@ public class astOpValidator extends AnalysisVisitor {
                     isConstTrueOrFalse = true;
                 }
             }
-            // se é constante true ou false, já é validado. Se não for...
+            // Se é constante true ou false, já é validado. Se não for...
             if (!isConstTrueOrFalse) {
                 // verificar se é variável local
                 if (symbolTable.getLocalVariables(currentMethod) != null) {
@@ -1124,7 +1124,7 @@ public class astOpValidator extends AnalysisVisitor {
                                 var functionCallReturn = symbolTable.getReturnType(assignElements.get(1).get("methodName"));
                                 var retType = functionCallReturn.getName();
                                 var isRetArray = functionCallReturn.isArray();
-                                // como estamos a verificar se uma variável array recebe um array na chamada a uma função, se no retorno não receber array dá erro
+                                // como verificamos se uma variável array recebe um array na chamada a uma função, se no retorno não receber array dá erro
                                 if (!isRetArray) {
                                     valid = false;
                                     break;
@@ -1491,140 +1491,142 @@ public class astOpValidator extends AnalysisVisitor {
         JmmNode currentFunction = null;
         List<JmmNode> paramsGiven = new ArrayList<JmmNode>();
         var numberParamsGiven = 0;
-        if (returnElements.get(0).getKind().equals("FunctionCall")) {
-            if (methods != null) {
-                // extraio o JmmNode da função chamada para analisar o valor de retorno desta
-                for (var method : methods) {
-                    if (returnElements.get(0).hasAttribute("methodName") && method.hasAttribute("methodName")) {
-                        if (returnElements.get(0).get("methodName").equals(method.get("methodName"))) {
-                            calledFunction = method;
-                            break;
-                        }
-                    }
-                }
-                // extraio o JmmNode da função atual, onde se faz a chamada de outra função
-                for (var method : methods) {
-                    if (method.hasAttribute("methodName")) {
-                        if (method.get("methodName").equals(currentMethod)) {
-                            currentFunction = method;
-                            break;
-                        }
-                    }
-                }
-            }
-            if (calledFunction != null && currentFunction != null) {
-                // se a função chamada não retornar o mesmo tipo da função atual, dá erro
-                if (calledFunction.getChildren().get(0).hasAttribute("type") && currentFunction.getChildren().get(0).hasAttribute("type")) {
-                    if (!calledFunction.getChildren().get(0).get("type").equals(currentFunction.getChildren().get(0).get("type"))) {
-                        valid = false;
-                    }
-                }
-                // se for dado um número errado de argumentos, tem que dar erro
-                for (var returnElement : returnElements) {
-                    if (!returnElement.getKind().equals("FunctionCall")) {
-                        paramsGiven.add(returnElement);
-                        numberParamsGiven++;
-                    }
-                }
-                var paramsExpected = calledFunction.getChildren("Param");
-                var numParamsExpected = paramsExpected.size();
-                // Subtrai-se 1 porque corresponde à variável que chama a função. Ex: a variável 'a' em a.foo(b) -> no contador só deve contar 'b'
-                if ((numberParamsGiven - 1) != numParamsExpected) valid = false;
-
-                // se for dado um elemento na chamada da função inválido tem que dar erro
-                if (valid) {
-                    for (int i = 0; i < numParamsExpected; i++) {
-                        Symbol varUsed = null;
-                        // percorrer variáveis locais e parametros para descobrir o tipo da variável a que se deu assign
-                        if (symbolTable.getLocalVariables(currentMethod) != null) {
-                            for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                                // i + 1 para avançar a variável 'a' em a.foo(b)
-                                if (paramsGiven.get(i+1).hasAttribute("name")) {
-                                    if (localVar.getName().equals(paramsGiven.get(i + 1).get("name"))) {
-                                        varUsed = localVar;
-                                        break;
-                                    }
-                                }
+        if (!returnElements.isEmpty()) {
+            if (returnElements.get(0).getKind().equals("FunctionCall")) {
+                if (methods != null) {
+                    // extraio o JmmNode da função chamada para analisar o valor de retorno desta
+                    for (var method : methods) {
+                        if (returnElements.get(0).hasAttribute("methodName") && method.hasAttribute("methodName")) {
+                            if (returnElements.get(0).get("methodName").equals(method.get("methodName"))) {
+                                calledFunction = method;
+                                break;
                             }
                         }
-                        if (symbolTable.getParameters(currentMethod) != null) {
-                            for (var param : symbolTable.getParameters(currentMethod)) {
-                                // i + 1 para avançar a variável 'a' em a.foo(b)
-                                if (paramsGiven.get(i+1).hasAttribute("name")) {
-                                    if (param.getName().equals(paramsGiven.get(i + 1).get("name"))) {
-                                        varUsed = param;
-                                        break;
-                                    }
-                                }
+                    }
+                    // extraio o JmmNode da função atual, onde se faz a chamada de outra função
+                    for (var method : methods) {
+                        if (method.hasAttribute("methodName")) {
+                            if (method.get("methodName").equals(currentMethod)) {
+                                currentFunction = method;
+                                break;
                             }
                         }
-
-                        // não encontrou a variável dada como argumento, dá erro
-                        if (varUsed == null) {
+                    }
+                }
+                if (calledFunction != null && currentFunction != null) {
+                    // se a função chamada não retornar o mesmo tipo da função atual, dá erro
+                    if (calledFunction.getChildren().get(0).hasAttribute("type") && currentFunction.getChildren().get(0).hasAttribute("type")) {
+                        if (!calledFunction.getChildren().get(0).get("type").equals(currentFunction.getChildren().get(0).get("type"))) {
                             valid = false;
-                            break;
                         }
+                    }
+                    // se for dado um número errado de argumentos, tem que dar erro
+                    for (var returnElement : returnElements) {
+                        if (!returnElement.getKind().equals("FunctionCall")) {
+                            paramsGiven.add(returnElement);
+                            numberParamsGiven++;
+                        }
+                    }
+                    var paramsExpected = calledFunction.getChildren("Param");
+                    var numParamsExpected = paramsExpected.size();
+                    // Subtrai-se 1 porque corresponde à variável que chama a função. Ex: a variável 'a' em a.foo(b) -> no contador só deve contar 'b'
+                    if ((numberParamsGiven - 1) != numParamsExpected) valid = false;
 
-                        if (paramsExpected.get(i).hasAttribute("type")) {
-                            if (!varUsed.getType().getName().equals(paramsExpected.get(i).get("type"))) {
-                                returnStatm.put("type", paramsExpected.get(i).get("type"));
+                    // se for dado um elemento na chamada da função inválido tem que dar erro
+                    if (valid) {
+                        for (int i = 0; i < numParamsExpected; i++) {
+                            Symbol varUsed = null;
+                            // percorrer variáveis locais e parametros para descobrir o tipo da variável a que se deu assign
+                            if (symbolTable.getLocalVariables(currentMethod) != null) {
+                                for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                                    // i + 1 para avançar a variável 'a' em a.foo(b)
+                                    if (paramsGiven.get(i + 1).hasAttribute("name")) {
+                                        if (localVar.getName().equals(paramsGiven.get(i + 1).get("name"))) {
+                                            varUsed = localVar;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            if (symbolTable.getParameters(currentMethod) != null) {
+                                for (var param : symbolTable.getParameters(currentMethod)) {
+                                    // i + 1 para avançar a variável 'a' em a.foo(b)
+                                    if (paramsGiven.get(i + 1).hasAttribute("name")) {
+                                        if (param.getName().equals(paramsGiven.get(i + 1).get("name"))) {
+                                            varUsed = param;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // não encontrou a variável dada como argumento, dá erro
+                            if (varUsed == null) {
                                 valid = false;
                                 break;
                             }
-                        }
-                    }
-                }
-            }
-        }
-        // se o return for de uma conta aritmética
-        else if (returnElements.get(0).getKind().equals("BinaryExpr")) {
-            for (var returnElement : returnElements) {
-                // só é preciso analisar variáveis int. Ignora os operadores.
-                if (!returnElement.getKind().equals("BinaryExpr")) {
-                    if (returnElement.getKind().equals("IntegerLiteral")) continue;
-                    // caso a variável no return esteja nas variáveis locais
-                    if (localVariables != null) {
-                        for (var localVar : localVariables) {
-                            // verifica se é variável local da função
-                            if (returnElement.hasAttribute("name")) {
-                                if (localVar.getName().equals(returnElement.get("name"))) {
-                                    // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
-                                    if (!localVar.getType().getName().equals("int") || localVar.getType().isArray()) {
-                                        valid = false;
-                                    } else returnStatm.put("type", "int");
+
+                            if (paramsExpected.get(i).hasAttribute("type")) {
+                                if (!varUsed.getType().getName().equals(paramsExpected.get(i).get("type"))) {
+                                    returnStatm.put("type", paramsExpected.get(i).get("type"));
+                                    valid = false;
+                                    break;
                                 }
                             }
                         }
                     }
-                    // caso esteja nos fields
-                    if (valid) {
-                        if (symbolTable.getFields() != null) {
-                            for (var field : symbolTable.getFields()) {
-                                // verifica se é field da classe
+                }
+            }
+            // se o return for de uma conta aritmética
+            else if (returnElements.get(0).getKind().equals("BinaryExpr")) {
+                for (var returnElement : returnElements) {
+                    // só é preciso analisar variáveis int. Ignora os operadores.
+                    if (!returnElement.getKind().equals("BinaryExpr")) {
+                        if (returnElement.getKind().equals("IntegerLiteral")) continue;
+                        // caso a variável no return esteja nas variáveis locais
+                        if (localVariables != null) {
+                            for (var localVar : localVariables) {
+                                // verifica se é variável local da função
                                 if (returnElement.hasAttribute("name")) {
-                                    if (field.getName().equals(returnElement.get("name"))) {
+                                    if (localVar.getName().equals(returnElement.get("name"))) {
                                         // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
-                                        if (!field.getType().getName().equals("int") || field.getType().isArray()) {
-                                            returnStatm.put("type", "int");
+                                        if (!localVar.getType().getName().equals("int") || localVar.getType().isArray()) {
                                             valid = false;
                                         } else returnStatm.put("type", "int");
                                     }
                                 }
                             }
                         }
-                    }
-                    // caso esteja nos parametros da função atual
-                    if (valid) {
-                        if (symbolTable.getParameters(currentMethod) != null) {
-                            for (var param : symbolTable.getParameters(currentMethod)) {
-                                // verifica se é parametro da função atual
-                                if (returnElement.hasAttribute("name")) {
-                                    if (param.getName().equals(returnElement.get("name"))) {
-                                        // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
-                                        if (!param.getType().getName().equals("int") || param.getType().isArray()) {
-                                            returnStatm.put("type", "int");
-                                            valid = false;
-                                        } else returnStatm.put("type", "int");
+                        // caso esteja nos fields
+                        if (valid) {
+                            if (symbolTable.getFields() != null) {
+                                for (var field : symbolTable.getFields()) {
+                                    // verifica se é field da classe
+                                    if (returnElement.hasAttribute("name")) {
+                                        if (field.getName().equals(returnElement.get("name"))) {
+                                            // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
+                                            if (!field.getType().getName().equals("int") || field.getType().isArray()) {
+                                                returnStatm.put("type", "int");
+                                                valid = false;
+                                            } else returnStatm.put("type", "int");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // caso esteja nos parametros da função atual
+                        if (valid) {
+                            if (symbolTable.getParameters(currentMethod) != null) {
+                                for (var param : symbolTable.getParameters(currentMethod)) {
+                                    // verifica se é parametro da função atual
+                                    if (returnElement.hasAttribute("name")) {
+                                        if (param.getName().equals(returnElement.get("name"))) {
+                                            // se o valor for diferente de int ou se a operação aritmética for realizar com um array, é inválido
+                                            if (!param.getType().getName().equals("int") || param.getType().isArray()) {
+                                                returnStatm.put("type", "int");
+                                                valid = false;
+                                            } else returnStatm.put("type", "int");
+                                        }
                                     }
                                 }
                             }
@@ -1632,167 +1634,171 @@ public class astOpValidator extends AnalysisVisitor {
                     }
                 }
             }
-        }
-        // se o return for um acesso a um array
-        else if (returnElements.get(0).getKind().equals("ArrayAccess")) {
-            // verificar se existe varArgs
-            boolean varArgsExists = false;
-            for (var method : methods) {
-                if (method.get("methodName").equals(currentMethod)) {
-                    // se tiver parametros
-                    if (!method.getChildren("Param").isEmpty()) {
-                        for (var param : method.getChildren("Param")) {
-                            if (!param.getChildren("VarArgs").isEmpty()) {
-                                varArgsExists = true;
-                                break;
+            // se o return for um acesso a um array
+            else if (returnElements.get(0).getKind().equals("ArrayAccess")) {
+                // verificar se existe varArgs
+                boolean varArgsExists = false;
+                if (methods != null) {
+                    for (var method : methods) {
+                        if (method.get("methodName").equals(currentMethod)) {
+                            // se tiver parametros
+                            if (!method.getChildren("Param").isEmpty()) {
+                                for (var param : method.getChildren("Param")) {
+                                    if (!param.getChildren("VarArgs").isEmpty()) {
+                                        varArgsExists = true;
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            var arrayVar = returnElements.get(1);
-            Symbol arrayVarSymbol = null;
-            Symbol arrayIndexSymbol = null;
-            var arrayIndex = returnElements.get(2);
-            boolean foundArrayDecl = false;
-            boolean foundArrayIndex = false;
+                var arrayVar = returnElements.get(1);
+                Symbol arrayVarSymbol = null;
+                Symbol arrayIndexSymbol = null;
+                var arrayIndex = returnElements.get(2);
+                boolean foundArrayDecl = false;
+                boolean foundArrayIndex = false;
 
-            // verificar se existe o arrayVar no ficheiro
-            if (symbolTable.getLocalVariables(currentMethod) != null) {
-                for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                    if (arrayVar.hasAttribute("name")) {
-                        if (localVar.getName().equals(arrayVar.get("name"))) {
-                            foundArrayDecl = true;
-                            arrayVarSymbol = localVar;
-                        }
-                    }
-                }
-            }
-            // se for varargs, é como se fosse array
-            if (!foundArrayDecl) {
-                if (symbolTable.getParameters(currentMethod) != null) {
-                    for (var param : symbolTable.getParameters(currentMethod)) {
+                // verificar se existe o arrayVar no ficheiro
+                if (symbolTable.getLocalVariables(currentMethod) != null) {
+                    for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
                         if (arrayVar.hasAttribute("name")) {
-                            if (param.getName().equals(arrayVar.get("name"))) {
+                            if (localVar.getName().equals(arrayVar.get("name"))) {
                                 foundArrayDecl = true;
-                                arrayVarSymbol = param;
+                                arrayVarSymbol = localVar;
                             }
                         }
                     }
                 }
-            }
-            // se for varargs, é como se fosse array
-            if (!foundArrayDecl) {
-                if (symbolTable.getFields() != null) {
-                    for (var field : symbolTable.getFields()) {
-                        if (arrayVar.hasAttribute("name")) {
-                            if (field.getName().equals(arrayVar.get("name"))) {
-                                foundArrayDecl = true;
-                                arrayVarSymbol = field;
-                            }
-                        }
-                    }
-                }
-            }
-            if (!foundArrayDecl && !varArgsExists) valid = false;
-
-            // se array está declarado, verificar se tem tem o tipo correto
-            if (foundArrayDecl) {
-                // se não for do tipo array, falha
-                if (!arrayVarSymbol.getType().isArray() && !varArgsExists) {
-                    valid = false;
-                }
-            }
-
-            // procuramos o valor do tipo dado dentro de []
-            if (valid) {
-                // se for uma variável
-                if (arrayIndex.getKind().equals("VarRefExpr")) {
-                    // verificar se existe a variável index no ficheiro
-                    if (symbolTable.getLocalVariables(currentMethod) != null) {
-                        for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                            if (arrayIndex.hasAttribute("name")) {
-                                if (localVar.getName().equals(arrayIndex.get("name"))) {
-                                    foundArrayIndex = true;
-                                    arrayIndexSymbol = localVar;
+                // se for varargs, é como se fosse array
+                if (!foundArrayDecl) {
+                    if (symbolTable.getParameters(currentMethod) != null) {
+                        for (var param : symbolTable.getParameters(currentMethod)) {
+                            if (arrayVar.hasAttribute("name")) {
+                                if (param.getName().equals(arrayVar.get("name"))) {
+                                    foundArrayDecl = true;
+                                    arrayVarSymbol = param;
                                 }
                             }
                         }
                     }
-                    if (!foundArrayIndex) {
-                        if (symbolTable.getParameters(currentMethod) != null) {
-                            for (var param : symbolTable.getParameters(currentMethod)) {
+                }
+                // se for varargs, é como se fosse array
+                if (!foundArrayDecl) {
+                    if (symbolTable.getFields() != null) {
+                        for (var field : symbolTable.getFields()) {
+                            if (arrayVar.hasAttribute("name")) {
+                                if (field.getName().equals(arrayVar.get("name"))) {
+                                    foundArrayDecl = true;
+                                    arrayVarSymbol = field;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!foundArrayDecl && !varArgsExists) valid = false;
+
+                // se array está declarado, verificar se tem o tipo correto
+                if (foundArrayDecl) {
+                    // se não for do tipo array, falha
+                    if (!arrayVarSymbol.getType().isArray() && !varArgsExists) {
+                        valid = false;
+                    }
+                }
+
+                // procuramos o valor do tipo dado dentro de []
+                if (valid) {
+                    // se for uma variável
+                    if (arrayIndex.getKind().equals("VarRefExpr")) {
+                        // verificar se existe a variável index no ficheiro
+                        if (symbolTable.getLocalVariables(currentMethod) != null) {
+                            for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
                                 if (arrayIndex.hasAttribute("name")) {
-                                    if (param.getName().equals(arrayIndex.get("name"))) {
+                                    if (localVar.getName().equals(arrayIndex.get("name"))) {
                                         foundArrayIndex = true;
-                                        arrayIndexSymbol = param;
+                                        arrayIndexSymbol = localVar;
                                     }
                                 }
                             }
                         }
-                    }
-                    if (!foundArrayIndex) {
-                        if (symbolTable.getFields() != null) {
-                            for (var field : symbolTable.getFields()) {
-                                if (arrayIndex.hasAttribute("name")) {
-                                    if (field.getName().equals(arrayIndex.get("name"))) {
-                                        foundArrayIndex = true;
-                                        arrayIndexSymbol = field;
+                        if (!foundArrayIndex) {
+                            if (symbolTable.getParameters(currentMethod) != null) {
+                                for (var param : symbolTable.getParameters(currentMethod)) {
+                                    if (arrayIndex.hasAttribute("name")) {
+                                        if (param.getName().equals(arrayIndex.get("name"))) {
+                                            foundArrayIndex = true;
+                                            arrayIndexSymbol = param;
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    if (!foundArrayIndex) valid = false;
-                    if (arrayIndexSymbol.getType().isArray()) valid = false;
-                    if (!arrayIndexSymbol.getType().getName().equals("int")) valid = false;
-                }
-            }
-        }
-        // Check if var in return exists
-        else {
-            if (!valid) {
-                // Create error report
-                var message = String.format("Incompatible return types: '%s'", returnTypes);
-                addReport(Report.newError(
-                        Stage.SEMANTIC,
-                        NodeUtils.getLine(returnStatm),
-                        NodeUtils.getColumn(returnStatm),
-                        message,
-                        null)
-                );
-            }
-            if (returnTypes != null) {
-                for (var returnElement : returnTypes) {
-                    if (symbolTable.getParameters(currentMethod) != null && symbolTable.getParameters(currentMethod).stream()
-                            .anyMatch(param -> param.getName().equals(returnElement.get(1)))) {
-                        returnTypes.clear();
-                        return null;
-                    } else if (symbolTable.getLocalVariables(currentMethod) != null && symbolTable.getLocalVariables(currentMethod).stream()
-                            .anyMatch(local -> local.getName().equals(returnElement.get(1)))) {
-                        returnTypes.clear();
-                        return null;
-                    } else if (symbolTable.getImports() != null && symbolTable.getImports().stream()
-                            .anyMatch(imp -> imp.equals(returnElement.get(1)))) {
-                        returnTypes.clear();
-                        return null;
-                    } else if (symbolTable.getFields() != null && symbolTable.getFields().stream()
-                            .anyMatch(field -> field.getName().equals(returnElement.get(1)))) {
-                        returnTypes.clear();
-                        return null;
-                    } else if (returnElement.get(1).equals("true") || returnElement.get(1).equals("false")) {
-                        for (var method : methods) {
-                            if (method.get("methodName").equals(currentMethod)) {
-                                if (method.getChildren().get(0).hasAttribute("value")) {
-                                    var expectedFuncRetType = method.getChildren().get(0).get("value");
-                                    if (!expectedFuncRetType.equals("boolean")) valid = false;
+                        if (!foundArrayIndex) {
+                            if (symbolTable.getFields() != null) {
+                                for (var field : symbolTable.getFields()) {
+                                    if (arrayIndex.hasAttribute("name")) {
+                                        if (field.getName().equals(arrayIndex.get("name"))) {
+                                            foundArrayIndex = true;
+                                            arrayIndexSymbol = field;
+                                        }
+                                    }
                                 }
                             }
                         }
-                        if (valid) return null;
+                        if (!foundArrayIndex) valid = false;
+                        if (arrayIndexSymbol != null) {
+                            if (arrayIndexSymbol.getType().isArray()) valid = false;
+                            if (!arrayIndexSymbol.getType().getName().equals("int")) valid = false;
+                        }
                     }
-                    valid = false;
+                }
+            }
+            // Check if var in return exists
+            else {
+                if (!valid) {
+                    // Create error report
+                    var message = String.format("Incompatible return types: '%s'", returnTypes);
+                    addReport(Report.newError(
+                            Stage.SEMANTIC,
+                            NodeUtils.getLine(returnStatm),
+                            NodeUtils.getColumn(returnStatm),
+                            message,
+                            null)
+                    );
+                }
+                if (returnTypes != null) {
+                    for (var returnElement : returnTypes) {
+                        if (symbolTable.getParameters(currentMethod) != null && symbolTable.getParameters(currentMethod).stream()
+                                .anyMatch(param -> param.getName().equals(returnElement.get(1)))) {
+                            returnTypes.clear();
+                            return null;
+                        } else if (symbolTable.getLocalVariables(currentMethod) != null && symbolTable.getLocalVariables(currentMethod).stream()
+                                .anyMatch(local -> local.getName().equals(returnElement.get(1)))) {
+                            returnTypes.clear();
+                            return null;
+                        } else if (symbolTable.getImports() != null && symbolTable.getImports().stream()
+                                .anyMatch(imp -> imp.equals(returnElement.get(1)))) {
+                            returnTypes.clear();
+                            return null;
+                        } else if (symbolTable.getFields() != null && symbolTable.getFields().stream()
+                                .anyMatch(field -> field.getName().equals(returnElement.get(1)))) {
+                            returnTypes.clear();
+                            return null;
+                        } else if (returnElement.get(1).equals("true") || returnElement.get(1).equals("false")) {
+                            for (var method : methods) {
+                                if (method.get("methodName").equals(currentMethod)) {
+                                    if (method.getChildren().get(0).hasAttribute("value")) {
+                                        var expectedFuncRetType = method.getChildren().get(0).get("value");
+                                        if (!expectedFuncRetType.equals("boolean")) valid = false;
+                                    }
+                                }
+                            }
+                            if (valid) return null;
+                        }
+                        valid = false;
+                    }
                 }
             }
         }
@@ -2017,7 +2023,7 @@ public class astOpValidator extends AnalysisVisitor {
             }
             // se for função do tipo void
             else {
-                // se tiver returnNode, falha. Ex: return; seria aceite mas não é registado pela nossa gramática daí,
+                // Se tiver returnNode, falha. Ex: return; seria aceite, mas não é registado pela nossa gramática daí,
                 // se tiver mais que um node ReturnStmt, é um return com valores, por isso tem que falhar
                 var returnNode = method.getDescendants("ReturnStmt");
                 if (!returnNode.isEmpty()) valid = false;
@@ -2053,20 +2059,24 @@ public class astOpValidator extends AnalysisVisitor {
                         // percorremos as variáveis locais do método atual
                         if (!assignment.getParent().getChildren("VarDecl").isEmpty()) {
                             for (var variableCallingFunction : assignment.getParent().getChildren("VarDecl")) {
-                                if (functionCall.getParent().getChildren("VarRefExpr").get(0).hasAttribute("name")) {
-                                    var variableDecl = functionCall.getParent().getChildren("VarRefExpr").get(0).get("name");
-                                    // se encontrarmos a variável que chama a função
-                                    if (variableCallingFunction.get("name").equals(variableDecl)) {
-                                        // confirmar se a variável contém um tipo de valor
-                                        if (variableCallingFunction.getChildren().get(0).hasAttribute("value")) {
-                                            // guardamos a function call e o número de parametros recebidos pela função
-                                            Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
-                                            functionsCalled.add(pairFunc);
-                                        }
-                                        // se variável for um array
-                                        else if (!variableCallingFunction.getChildren("Array").isEmpty()) {
-                                            Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
-                                            functionsCalled.add(pairFunc);
+                                if (!functionCall.getParent().getChildren("VarRefExpr").isEmpty()) {
+                                    if (functionCall.getParent().getChildren("VarRefExpr").get(0).hasAttribute("name")) {
+                                        var variableDecl = functionCall.getParent().getChildren("VarRefExpr").get(0).get("name");
+                                        // se encontrarmos a variável que chama a função
+                                        if (variableCallingFunction.get("name").equals(variableDecl)) {
+                                            // confirmar se a variável contém um tipo de valor
+                                            if (!variableCallingFunction.getChildren().isEmpty()) {
+                                                if (variableCallingFunction.getChildren().get(0).hasAttribute("value")) {
+                                                    // guardamos a function call e o número de parametros recebidos pela função
+                                                    Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
+                                                    functionsCalled.add(pairFunc);
+                                                }
+                                                // se variável for um array
+                                                else if (!variableCallingFunction.getChildren("Array").isEmpty()) {
+                                                    Pair<JmmNode, JmmNode> pairFunc = new Pair<>(functionCall, variableCallingFunction);
+                                                    functionsCalled.add(pairFunc);
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -2099,11 +2109,13 @@ public class astOpValidator extends AnalysisVisitor {
 
                             // verificar se foi dado o tipo correto de parametros ao varargs
                             var numParamsGiven = 0;
-                            for (var node : functionCalled.a.getChildren()) {
-                                if (node.hasAttribute("name")) {
-                                    if (node.get("name").equals("this")) continue;
+                            if (!functionCalled.a.getChildren().isEmpty()) {
+                                for (var node : functionCalled.a.getChildren()) {
+                                    if (node.hasAttribute("name")) {
+                                        if (node.get("name").equals("this")) continue;
+                                    }
+                                    numParamsGiven++;
                                 }
-                                numParamsGiven++;
                             }
                             var numParamsExpected = method.getChildren("Param").size();
                             // se receber menos que os esperados, dá erro
@@ -2112,47 +2124,55 @@ public class astOpValidator extends AnalysisVisitor {
                                 break;
                             }
 
-                            boolean isLastParamVarArgs = !method.getChildren().get(parametersNumber).getChildren("VarArgs").isEmpty();
-                            // só pode existir um parametro varargs nos parametros da função e tem que estar como último parâmetro dado, caso contrário dá erro
-                            if (!isLastParamVarArgs || numVarArgsCalled > 1) {
-                                valid = false;
-                                break;
+                            if (!method.getChildren().isEmpty()) {
+                                boolean isLastParamVarArgs = !method.getChildren().get(parametersNumber).getChildren("VarArgs").isEmpty();
+                                // só pode existir um parametro varargs nos parametros da função e tem que estar como último parâmetro dado, caso contrário dá erro
+                                if (!isLastParamVarArgs || numVarArgsCalled > 1) {
+                                    valid = false;
+                                    break;
+                                }
                             }
                             // procuramos pelo return statement para verificar o seu tipo
                             for (var child : methodChildren) {
                                 if (child.getKind().equals("ReturnStmt")) {
-                                    var variableThatCalledFunctionKind = functionCalled.b.getChildren().get(0).getKind();
-                                    // se a variável que chamou a função é um inteiro, o return de um vargars tem que ser um array access
-                                    if (variableThatCalledFunctionKind.equals("Integer")) {
-                                        // tipo da variável que guarda o valor de return do método a analisar agora
-                                        if (functionCalled.b.getChildren().get(0).hasAttribute("value")) {
-                                            var variableThatCalledFunctionType = functionCalled.b.getChildren().get(0).get("value");
+                                    if (!functionCalled.b.getChildren().isEmpty()) {
+                                        var variableThatCalledFunctionKind = functionCalled.b.getChildren().get(0).getKind();
+                                        // se a variável que chamou a função é um inteiro, o return de um vargars tem que ser um array access
+                                        if (variableThatCalledFunctionKind.equals("Integer")) {
+                                            // tipo da variável que guarda o valor de return do método a analisar agora
+                                            if (functionCalled.b.getChildren().get(0).hasAttribute("value")) {
+                                                var variableThatCalledFunctionType = functionCalled.b.getChildren().get(0).get("value");
 
-                                            // se os tipos de retorno forem diferentes ou se não for um array access, dá erro
-                                            if (!returnType.getName().equals(variableThatCalledFunctionType))
-                                                valid = false;
-                                            if (!child.getChildren().get(0).getKind().equals("ArrayAccess"))
-                                                valid = false;
+                                                // se os tipos de retorno forem diferentes ou se não for um array access, dá erro
+                                                if (!returnType.getName().equals(variableThatCalledFunctionType))
+                                                    valid = false;
+                                                if (!child.getChildren().isEmpty()) {
+                                                    if (!child.getChildren().get(0).getKind().equals("ArrayAccess"))
+                                                        valid = false;
+                                                }
+                                            }
                                         }
-                                    }
-                                    // se a variável que chamou a função é um array, o return de um vargars pode o ser parâmetro do varargs
-                                    else if (variableThatCalledFunctionKind.equals("Array")) {
-                                        boolean found = false;
-                                        for (var returnElement : child.getChildren()) {
-                                            // se o retorno for o parametro vargars (parametro é automaticamento array)
-                                            if (table.getParameters(currentMethod) != null) {
-                                                for (var param : table.getParameters(currentMethod)) {
-                                                    if (found) break;
-                                                    if (returnElement.hasAttribute("name")) {
-                                                        if (returnElement.get("name").equals(param.getName())) {
-                                                            found = true;
-                                                            break;
+                                        // se a variável que chamou a função é um array, o return de um vargars pode o ser parâmetro do varargs
+                                        else if (variableThatCalledFunctionKind.equals("Array")) {
+                                            boolean found = false;
+                                            if (!child.getChildren().isEmpty()) {
+                                                for (var returnElement : child.getChildren()) {
+                                                    // se o retorno for o parametro vargars (parametro é automaticamento array)
+                                                    if (table.getParameters(currentMethod) != null) {
+                                                        for (var param : table.getParameters(currentMethod)) {
+                                                            if (found) break;
+                                                            if (returnElement.hasAttribute("name")) {
+                                                                if (returnElement.get("name").equals(param.getName())) {
+                                                                    found = true;
+                                                                    break;
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }
                                             }
+                                            if (!found) valid = false;
                                         }
-                                        if (!found) valid = false;
                                     }
                                 }
                             }
@@ -2161,12 +2181,18 @@ public class astOpValidator extends AnalysisVisitor {
                         // se não conter varargs
                         else {
                             // verificar se foi dado o tipo correto de parametros
-                            var numParamsGiven = functionCalled.a.getNumChildren()-1;
-                            var numParamsExpected = method.getChildren("Param").size();
-                            // se receber menos que os esperados, dá erro
-                            if (numParamsExpected != numParamsGiven) {
-                                valid = false;
-                                break;
+                            int numParamsGiven;
+                            if (functionCalled.a.getChildren().isEmpty()) {
+                                numParamsGiven = 0;
+                            }
+                            else {
+                                numParamsGiven = functionCalled.a.getNumChildren() - 1;
+                                var numParamsExpected = method.getChildren("Param").size();
+                                // se receber menos que os esperados, dá erro
+                                if (numParamsExpected != numParamsGiven) {
+                                    valid = false;
+                                    break;
+                                }
                             }
                         }
                     }
@@ -2190,7 +2216,7 @@ public class astOpValidator extends AnalysisVisitor {
 
     private Void visitVarDecl(JmmNode varDecl, SymbolTable table) {
 
-        // verificar se o id da declaração existe
+        // verificar se o ‘id’ da declaração existe
         boolean correctID = false;
 
         if (!varDecl.getDescendants("VarArgs").isEmpty()) {
