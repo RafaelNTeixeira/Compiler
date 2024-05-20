@@ -1026,20 +1026,22 @@ public class astOpValidator extends AnalysisVisitor {
             var localVariables = symbolTable.getLocalVariables(currentMethod);
             if (localVariables != null) {
                 for (var localVar : localVariables) {
-                    if (assignElements.get(0).getKind().equals("VarRefExpr")) {
-                        if (assignElements.get(0).hasAttribute("name")) {
-                            if (localVar.getName().equals(assignElements.get(0).get("name"))) {
-                                assignStatm.getChildren().get(0).put("type", localVar.getType().getName());
-                                isDeclared = true;
-                                break;
+                    if (!assignElements.isEmpty()) {
+                        if (assignElements.get(0).getKind().equals("VarRefExpr")) {
+                            if (assignElements.get(0).hasAttribute("name")) {
+                                if (localVar.getName().equals(assignElements.get(0).get("name"))) {
+                                    assignStatm.getChildren().get(0).put("type", localVar.getType().getName());
+                                    isDeclared = true;
+                                    break;
+                                }
                             }
-                        }
-                    } else if (assignElements.get(0).getKind().equals("IntegerLiteral")) {
-                        if (assignElements.get(0).hasAttribute("name")) {
-                            if (localVar.getName().equals(assignElements.get(0).get("name"))) {
-                                assignStatm.getChildren().get(0).put("type", "int");
-                                isDeclared = true;
-                                break;
+                        } else if (assignElements.get(0).getKind().equals("IntegerLiteral")) {
+                            if (assignElements.get(0).hasAttribute("name")) {
+                                if (localVar.getName().equals(assignElements.get(0).get("name"))) {
+                                    assignStatm.getChildren().get(0).put("type", "int");
+                                    isDeclared = true;
+                                    break;
+                                }
                             }
                         }
                     }
@@ -1877,7 +1879,6 @@ public class astOpValidator extends AnalysisVisitor {
         // validar a estrutura do método main
         if (currentMethod.equals("main")) {
             // só pode ter um node Param como node filho
-            if (!method.getChildren("Void").isEmpty()) valid = false;
             if (method.getChildren("Param").size() > 1) valid = false;
 
             var mainParam = method.getChildren("Param").get(0);
