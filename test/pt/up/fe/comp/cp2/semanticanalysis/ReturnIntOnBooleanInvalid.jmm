@@ -1,0 +1,7 @@
+class ReturnIntOnBooleanInvalid {
+
+    public boolean foo() {
+        int b = 2;
+        return b;
+    }
+}

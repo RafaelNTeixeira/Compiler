@@ -82,6 +82,20 @@ public class SemanticAnalysisTest {
     }
 
     @Test
+    public void returnIntOnBooleanInvalid() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/ReturnIntOnBooleanInvalid.jmm"));
+        System.out.println(result.getReports());
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void returnIntOnVoidInvalid() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/ReturnIntOnVoidInvalid.jmm"));
+        System.out.println(result.getReports());
+        TestUtils.mustFail(result);
+    }
+
+    @Test
     public void intInIfCondition() {
         var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/IntInIfCondition.jmm"));
         TestUtils.mustFail(result);
