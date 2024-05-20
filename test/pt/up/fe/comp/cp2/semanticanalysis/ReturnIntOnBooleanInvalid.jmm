@@ -2,6 +2,8 @@ class ReturnIntOnBooleanInvalid {
     int c;
 
     public boolean bar() {
+        boolean a;
+        a = true;
         c = 4;
         return c;
     }

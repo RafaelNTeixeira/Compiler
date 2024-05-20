@@ -1344,26 +1344,30 @@ public class astOpValidator extends AnalysisVisitor {
         }
 
         // não pode conter varargs num return
-        for (var method : methods) {
-            if (!returnStatm.getChildren("FunctionCall").isEmpty()) {
-                // se encontrar a função chamada
-                if (returnStatm.getChildren("FunctionCall").get(0).hasAttribute("methodName")) {
-                    if (method.get("methodName").equals(returnStatm.getChildren("FunctionCall").get(0).get("methodName"))) {
-                        boolean hasVarArgs = !method.getDescendants("VarArgs").isEmpty();
-                        if (hasVarArgs) valid = false;
-                        break;
+        if (methods != null) {
+            for (var method : methods) {
+                if (!returnStatm.getChildren("FunctionCall").isEmpty()) {
+                    // se encontrar a função chamada
+                    if (returnStatm.getChildren("FunctionCall").get(0).hasAttribute("methodName")) {
+                        if (method.get("methodName").equals(returnStatm.getChildren("FunctionCall").get(0).get("methodName"))) {
+                            boolean hasVarArgs = !method.getDescendants("VarArgs").isEmpty();
+                            if (hasVarArgs) valid = false;
+                            break;
+                        }
                     }
                 }
             }
         }
 
-        for (JmmNode returnElement : returnElements) {
-            if (returnElement.hasAttribute("name")) {
-                List<String> elementInfo = Arrays.asList(returnElement.getKind(), returnElement.get("name"));
-                returnTypes.add(elementInfo);
-            } else if (returnElement.hasAttribute("methodName")) {
-                List<String> elementInfo = Arrays.asList(returnElement.getKind(), returnElement.get("methodName"));
-                returnTypes.add(elementInfo);
+        if (returnElements != null) {
+            for (JmmNode returnElement : returnElements) {
+                if (returnElement.hasAttribute("name")) {
+                    List<String> elementInfo = Arrays.asList(returnElement.getKind(), returnElement.get("name"));
+                    returnTypes.add(elementInfo);
+                } else if (returnElement.hasAttribute("methodName")) {
+                    List<String> elementInfo = Arrays.asList(returnElement.getKind(), returnElement.get("methodName"));
+                    returnTypes.add(elementInfo);
+                }
             }
         }
 
@@ -1381,91 +1385,93 @@ public class astOpValidator extends AnalysisVisitor {
         }
 
         // Verificar se as variáveis de retorno existem e se coincidem com o tipo esperado de retorno da função
-        for (var returnElement : returnElements) {
-            found = false;
-            // se for variável
-            var hasArrayAccess = !returnStatm.getDescendants("ArrayAccess").isEmpty();
-            if (returnElement.getKind().equals("VarRefExpr")) {
-                if (localVariables != null) {
-                    // procura nas variáveis locais se existe
-                    for (var localVar : localVariables) {
-                        if (returnElement.hasAttribute("name")) {
-                            if (localVar.getName().equals(returnElement.get("name"))) {
-                                found = true;
-                                if (!localVar.getType().getName().equals(funcTypeExpected)) valid = false;
-                                if (hasArrayAccess && isArray) valid = false;
-                                // se o return não tiver um array access, estudam-se tipos de return array/função que espera resultado em array
-                                if (!hasArrayAccess) {
-                                    if ((localVar.getType().isArray() && !isArray) || (!localVar.getType().isArray() && isArray))
-                                        valid = false;
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // se já encontrou, verifica se a próxima variável no return, se existir, é declarada
-                // se a função não tiver parametros, é escusado verificá-los
-                if (found || parameters == null) continue;
-                // procura nos parametros da função atual se a variável existe
-                for (var param : parameters) {
-                    if (returnElement.hasAttribute("name")) {
-                        if (param.getName().equals(returnElement.get("name"))) {
-                            found = true;
-                            if (!hasArrayAccess) {
-                                if ((param.getType().isArray() && !isArray) || (!param.getType().isArray() && isArray))
-                                    valid = false;
-                            }
-                            if (!param.getType().getName().equals(funcTypeExpected)) valid = false;
-                            break;
-                        }
-                    }
-                }
-                if (!found) {
-                    if (symbolTable.getFields() != null) {
-                        for (var field : symbolTable.getFields()) {
+        if (returnElements != null) {
+            for (var returnElement : returnElements) {
+                found = false;
+                // se for variável
+                var hasArrayAccess = !returnStatm.getDescendants("ArrayAccess").isEmpty();
+                if (returnElement.getKind().equals("VarRefExpr")) {
+                    if (localVariables != null) {
+                        // procura nas variáveis locais se existe
+                        for (var localVar : localVariables) {
                             if (returnElement.hasAttribute("name")) {
-                                if (field.getName().equals(returnElement.get("name"))) {
+                                if (localVar.getName().equals(returnElement.get("name"))) {
                                     found = true;
+                                    if (!localVar.getType().getName().equals(funcTypeExpected)) valid = false;
+                                    if (hasArrayAccess && isArray) valid = false;
+                                    // se o return não tiver um array access, estudam-se tipos de return array/função que espera resultado em array
                                     if (!hasArrayAccess) {
-                                        if ((field.getType().isArray() && !isArray) || (!field.getType().isArray() && isArray))
+                                        if ((localVar.getType().isArray() && !isArray) || (!localVar.getType().isArray() && isArray))
                                             valid = false;
                                     }
-                                    if (!field.getType().getName().equals(funcTypeExpected)) valid = false;
                                     break;
                                 }
                             }
                         }
                     }
-                }
-                if (!found) {
-                    if (symbolTable.getImports() != null) {
-                        for (var importName : symbolTable.getImports()) {
-                            if (returnElement.hasAttribute("name")) {
-                                if (importName.equals(returnElement.get("name"))) {
-                                    found = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-                if (!found) {
-                    if (returnElement.hasAttribute("name")) {
+
+                    // se já encontrou, verifica se a próxima variável no return, se existir, é declarada
+                    // se a função não tiver parametros, é escusado verificá-los
+                    if (found || parameters == null) continue;
+                    // procura nos parametros da função atual se a variável existe
+                    for (var param : parameters) {
                         if (returnElement.hasAttribute("name")) {
-                            if (returnElement.get("name").equals("true") || returnElement.get("name").equals("false")) {
+                            if (param.getName().equals(returnElement.get("name"))) {
                                 found = true;
-                                if (!funcTypeExpected.equals("boolean")) valid = false;
+                                if (!hasArrayAccess) {
+                                    if ((param.getType().isArray() && !isArray) || (!param.getType().isArray() && isArray))
+                                        valid = false;
+                                }
+                                if (!param.getType().getName().equals(funcTypeExpected)) valid = false;
                                 break;
                             }
                         }
                     }
-                }
+                    if (!found) {
+                        if (symbolTable.getFields() != null) {
+                            for (var field : symbolTable.getFields()) {
+                                if (returnElement.hasAttribute("name")) {
+                                    if (field.getName().equals(returnElement.get("name"))) {
+                                        found = true;
+                                        if (!hasArrayAccess) {
+                                            if ((field.getType().isArray() && !isArray) || (!field.getType().isArray() && isArray))
+                                                valid = false;
+                                        }
+                                        if (!field.getType().getName().equals(funcTypeExpected)) valid = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (!found) {
+                        if (symbolTable.getImports() != null) {
+                            for (var importName : symbolTable.getImports()) {
+                                if (returnElement.hasAttribute("name")) {
+                                    if (importName.equals(returnElement.get("name"))) {
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (!found) {
+                        if (returnElement.hasAttribute("name")) {
+                            if (returnElement.hasAttribute("name")) {
+                                if (returnElement.get("name").equals("true") || returnElement.get("name").equals("false")) {
+                                    found = true;
+                                    if (!funcTypeExpected.equals("boolean")) valid = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
 
-                if (found) break;
-                // se não existir, dá erro
-                valid = false;
+                    if (found) break;
+                    // se não existir, dá erro
+                    valid = false;
+                }
             }
         }
 
