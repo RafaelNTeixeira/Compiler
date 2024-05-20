@@ -1,0 +1,16 @@
+class MethodSignatureWrongNumberInvalid {
+    public int foo(int a, int b) {
+        return a;
+    }
+
+    public int bar() {
+        int a;
+        int b;
+        int c;
+        b = 1;
+        c = 2;
+        a = this.foo(1);
+
+        return a;
+    }
+}

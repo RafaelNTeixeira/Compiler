@@ -1,0 +1,14 @@
+class MethodSignatureWrongTypesInvalid {
+    public int foo(int a, boolean c) {
+        return a;
+    }
+
+    public int bar(int c) {
+        int a;
+        int b;
+        b = 1;
+        a = this.foo(b, c);
+
+        return a;
+    }
+}

@@ -425,8 +425,6 @@ public class astOpValidator extends AnalysisVisitor {
     private Void visitArrayAccess(JmmNode arrayAccessNode, SymbolTable symbolTable) {
         boolean valid = true;
 
-        //if (arrayAccessNode.getChildren().get(0))
-
         // Verificar se valor dentro de [] é int
         var indexNode = arrayAccessNode.getChildren().get(1);
         // Se for um array access com uma conta aritmética
@@ -438,12 +436,13 @@ public class astOpValidator extends AnalysisVisitor {
         // Verificar se é uma constante
         else if (!indexNode.getKind().equals("IntegerLiteral")) {
             // Verificar se é uma variável local
-            if (symbolTable.getLocalVariables(currentMethod) != null)
-            for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                if (indexNode.hasAttribute("name")) {
-                    if (localVar.getName().equals(indexNode.get("name"))) {
-                        if (!localVar.getType().getName().equals("int") || localVar.getType().isArray()) {
-                            valid = false;
+            if (symbolTable.getLocalVariables(currentMethod) != null) {
+                for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                    if (indexNode.hasAttribute("name")) {
+                        if (localVar.getName().equals(indexNode.get("name"))) {
+                            if (!localVar.getType().getName().equals("int") || localVar.getType().isArray()) {
+                                valid = false;
+                            }
                         }
                     }
                 }
@@ -604,6 +603,9 @@ public class astOpValidator extends AnalysisVisitor {
                         }
                     }
                 }
+                else if (paramGiven.getKind().equals("Bolean")) {
+                    paramGivenType = "boolean";
+                }
 
                 // procurar pelo valor dado caso ainda não tenha sido encontrado
                 if (paramGivenType.isEmpty()) {
@@ -654,15 +656,22 @@ public class astOpValidator extends AnalysisVisitor {
                         if (method.get("methodName").equals(expressionNode.get("methodName"))) {
                             var hasVarArgsDescendents = !method.getDescendants("VarArgs").isEmpty();
                             if (!hasVarArgsDescendents) {
-                                var expectedParam = method.getChildren("Param").get(i - 1);
+                                if (!method.getChildren("Param").isEmpty()) {
+                                    var expectedParam = method.getChildren("Param").get(i - 1);
+                                    var expectedParamSize = method.getChildren("Param").size();
 
-                                if (expectedParam.getChildren("VarArgs").isEmpty()) {
-                                    if (expectedParam.hasAttribute("type")) {
-                                        if (!expectedParam.get("type").equals(paramGivenType)) {
-                                            valid = false;
+                                    // Verificar se dá o número correto de parametros à função chamada
+                                    if (expectedParamSize != expressionNode.getChildren().size() - 1) valid = false;
+
+                                    if (expectedParam.getChildren("VarArgs").isEmpty()) {
+                                        if (expectedParam.hasAttribute("type")) {
+                                            if (!expectedParam.get("type").equals(paramGivenType)) {
+                                                valid = false;
+                                            }
                                         }
                                     }
                                 }
+                                else if (expressionNode.getChildren().size() - 1 > 0) valid = false; // Significa que deu parametros a uma função que não recebe argumentos
                             }
                             break;
                         }

@@ -70,6 +70,27 @@ public class SemanticAnalysisTest {
     }
 
     @Test
+    public void miscLengthAsName() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/MiscLengthAsName.jmm"));
+        System.out.println(result.getReports());
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void methodSignatureWrongNumberInvalid() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/MethodSignatureWrongNumberInvalid.jmm"));
+        System.out.println(result.getReports());
+        TestUtils.mustFail(result);
+    }
+
+    @Test
+    public void methodSignatureWrongTypesInvalid() {
+        var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/MethodSignatureWrongTypesInvalid.jmm"));
+        System.out.println(result.getReports());
+        TestUtils.mustFail(result);
+    }
+
+    @Test
     public void objectAssignmentPassExtends() {
         var result = TestUtils.analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/ObjectAssignmentPassExtends.jmm"));
         TestUtils.noErrors(result);
