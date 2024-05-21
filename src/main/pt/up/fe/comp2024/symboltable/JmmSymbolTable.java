@@ -42,26 +42,31 @@ public class JmmSymbolTable implements SymbolTable {
 
     @Override
     public List<String> getImports() {
+        if (imports == null) return new ArrayList<String>();
         return imports;
     }
 
     @Override
     public String getClassName() {
+        if (className == null) return "";
         return className;
     }
 
     @Override
     public String getSuper() {
+        if (superClassName == null) return "";
         return superClassName;
     }
 
     @Override
     public List<Symbol> getFields() {
+        if (fields == null) return new ArrayList<Symbol>();
         return fields;
     }
 
     @Override
     public List<String> getMethods() {
+        if (methods == null) return new ArrayList<String>();
         return methods;
     }
 
@@ -72,12 +77,14 @@ public class JmmSymbolTable implements SymbolTable {
 
     @Override
     public List<Symbol> getParameters(String methodSignature) {
-        return params.get(methodSignature);
+        List<Symbol> content = params.get(methodSignature);
+        if (content == null) content = new ArrayList<Symbol>();
+        return content;
     }
 
     @Override
     public List<Symbol> getLocalVariables(String methodSignature) {
-        var content = locals.get(methodSignature);
+        List<Symbol> content = locals.get(methodSignature);
         if (content == null) content = new ArrayList<Symbol>();
         return content;
     }
