@@ -1028,7 +1028,13 @@ public class astOpValidator extends AnalysisVisitor {
 
     private Void visitAssignStatement(JmmNode assignStatm, SymbolTable symbolTable) {
         List<JmmNode> assignElements = assignStatm.getChildren();
-        var localsVar = symbolTable.getLocalVariables(currentMethod);
+        List<Symbol> localsVar;
+        if (symbolTable.getLocalVariables(currentMethod) != null) {
+            localsVar = symbolTable.getLocalVariables(currentMethod);
+        }
+        else {
+            localsVar = new ArrayList<Symbol>();
+        }
         var importNames = symbolTable.getImports();
 
         boolean valid = true;
@@ -1260,25 +1266,31 @@ public class astOpValidator extends AnalysisVisitor {
                 if (varThatCalledFunction.hasAttribute("name")) {
                     if (!varThatCalledFunction.get("name").equals("this")) {
                         // verificar se variável que chamou a função existe na classe ou nos imports
-                        for (var importName : symbolTable.getImports()) {
-                            if (importName.equals(varThatCalledFunction.get("name"))) {
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found) {
-                            for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
-                                if (localVar.getName().equals(varThatCalledFunction.get("name"))) {
+                        if (symbolTable.getImports() != null) {
+                            for (var importName : symbolTable.getImports()) {
+                                if (importName.equals(varThatCalledFunction.get("name"))) {
                                     found = true;
                                     break;
                                 }
                             }
                         }
                         if (!found) {
-                            for (var param : symbolTable.getParameters(currentMethod)) {
-                                if (param.getName().equals(varThatCalledFunction.get("name"))) {
-                                    found = true;
-                                    break;
+                            if (symbolTable.getLocalVariables(currentMethod) != null) {
+                                for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
+                                    if (localVar.getName().equals(varThatCalledFunction.get("name"))) {
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (!found) {
+                            if (symbolTable.getParameters(currentMethod) != null) {
+                                for (var param : symbolTable.getParameters(currentMethod)) {
+                                    if (param.getName().equals(varThatCalledFunction.get("name"))) {
+                                        found = true;
+                                        break;
+                                    }
                                 }
                             }
                         }
@@ -2001,8 +2013,13 @@ public class astOpValidator extends AnalysisVisitor {
         }
 
         var returnType = table.getReturnType(currentMethod);
-
-        List<Symbol> localsList = table.getLocalVariables(currentMethod);
+        List<Symbol> localsList;
+        if (table.getLocalVariables(currentMethod) != null) {
+            localsList = table.getLocalVariables(currentMethod);
+        }
+        else {
+            localsList = new ArrayList<Symbol>();
+        }
         Pair<String, List<Symbol>> pairLocals = new Pair<>(currentMethod, localsList);
         allLocalVariables.add(pairLocals);
 
