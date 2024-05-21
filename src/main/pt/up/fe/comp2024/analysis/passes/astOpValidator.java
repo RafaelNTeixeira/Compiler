@@ -222,7 +222,7 @@ public class astOpValidator extends AnalysisVisitor {
         // Se for uma operação aritmética entre variáveis, verificar se são do tipo int
         for (var variable : allVariables) {
             // verificar se é variável local
-            if (symbolTable.getLocalVariables(currentMethod) != null ) {
+            if (symbolTable.getLocalVariables(currentMethod) != null) {
                 for (var localVar : symbolTable.getLocalVariables(currentMethod)) {
                     if (variable.hasAttribute("name")) {
                         if (localVar.getName().equals(variable.get("name"))) {
@@ -1342,7 +1342,13 @@ public class astOpValidator extends AnalysisVisitor {
     private Void visitRetStatement(JmmNode returnStatm, SymbolTable symbolTable) {
         // return kind and name of elements that are being assigned
         List<JmmNode> returnElements = returnStatm.getDescendants();
-        var localVariables = symbolTable.getLocalVariables(currentMethod);
+        List<Symbol> localVariables;
+        if (symbolTable.getLocalVariables(currentMethod) != null) {
+            localVariables = symbolTable.getLocalVariables(currentMethod);
+        }
+        else {
+            localVariables = new ArrayList<Symbol>();
+        }
         var parameters = symbolTable.getParameters(currentMethod);
         boolean valid = true;
 
@@ -1948,8 +1954,12 @@ public class astOpValidator extends AnalysisVisitor {
                         var leftVar = assignStmt.getChildren().get(0);
                         var rightVar = assignStmt.getChildren().get(1);
                         for (var field : table.getFields()) {
-                            if (field.getName().equals(leftVar.get("name"))) valid = false;
-                            if (field.getName().equals(rightVar.get("name"))) valid = false;
+                            if (leftVar.hasAttribute("name")) {
+                                if (field.getName().equals(leftVar.get("name"))) valid = false;
+                            }
+                            if (rightVar.hasAttribute("name")) {
+                                if (field.getName().equals(rightVar.get("name"))) valid = false;
+                            }
                             if (!valid) break;
                         }
                         if (!valid) break;
@@ -2327,31 +2337,33 @@ public class astOpValidator extends AnalysisVisitor {
         }
 
         // Var is a declared variable or imported package, return
-        if (table.getLocalVariables(currentMethod).stream()
-                .anyMatch(varDec -> varDec.getName().equals(varRefName)) ||
-                table.getImports().stream().anyMatch(imp -> imp.equals(varRefName))
-        ) {
-            if (varDecl.getChildren().get(0).getKind().equals("Array")) {
-                if (varDecl.getChildren().get(0).getChildren().get(0).hasAttribute("value")) {
-                    varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+        if (table.getLocalVariables(currentMethod) != null) {
+            if (table.getLocalVariables(currentMethod).stream()
+                    .anyMatch(varDec -> varDec.getName().equals(varRefName)) ||
+                    table.getImports().stream().anyMatch(imp -> imp.equals(varRefName))
+            ) {
+                if (varDecl.getChildren().get(0).getKind().equals("Array")) {
+                    if (varDecl.getChildren().get(0).getChildren().get(0).hasAttribute("value")) {
+                        varDecl.put("type", varDecl.getChildren().get(0).getChildren().get(0).get("value"));
+                    }
+                } else if (varDecl.getChildren().get(0).getKind().equals("Var")) {
+                    if (varDecl.getChildren().get(0).hasAttribute("value")) {
+                        varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                    }
+                } else {
+                    if (varDecl.getChildren().get(0).hasAttribute("value")) {
+                        varDecl.put("type", varDecl.getChildren().get(0).get("value"));
+                    }
                 }
+                return null;
             }
-            else if (varDecl.getChildren().get(0).getKind().equals("Var")) {
-                if (varDecl.getChildren().get(0).hasAttribute("value")) {
-                    varDecl.put("type", varDecl.getChildren().get(0).get("value"));
-                }
-            }
-            else {
-                if (varDecl.getChildren().get(0).hasAttribute("value")) {
-                    varDecl.put("type", varDecl.getChildren().get(0).get("value"));
-                }
-            }
-            return null;
         }
 
-        if (table.getImports().stream()
-                .anyMatch(varDec -> varDec.equals(varRefName))) {
-            return null;
+        if (table.getImports() != null) {
+            if (table.getImports().stream()
+                    .anyMatch(varDec -> varDec.equals(varRefName))) {
+                return null;
+            }
         }
 
         // Create error report
