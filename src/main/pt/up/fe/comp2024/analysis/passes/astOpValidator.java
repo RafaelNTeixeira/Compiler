@@ -1430,7 +1430,7 @@ public class astOpValidator extends AnalysisVisitor {
                 // se for variável
                 var hasArrayAccess = !returnStatm.getDescendants("ArrayAccess").isEmpty();
                 if (returnElement.getKind().equals("VarRefExpr")) {
-                    if (localVariables != null) {
+                    if (localVariables != null && !localVariables.isEmpty()) {
                         // procura nas variáveis locais se existe
                         for (var localVar : localVariables) {
                             if (returnElement.hasAttribute("name")) {
@@ -1612,7 +1612,7 @@ public class astOpValidator extends AnalysisVisitor {
                     if (!returnElement.getKind().equals("BinaryExpr")) {
                         if (returnElement.getKind().equals("IntegerLiteral")) continue;
                         // caso a variável no return esteja nas variáveis locais
-                        if (localVariables != null) {
+                        if (localVariables != null && !localVariables.isEmpty()) {
                             for (var localVar : localVariables) {
                                 // verifica se é variável local da função
                                 if (returnElement.hasAttribute("name")) {
@@ -2332,19 +2332,23 @@ public class astOpValidator extends AnalysisVisitor {
         }
 
         // verificar se existem variáveis repetidas
-        if (table.getLocalVariables(currentMethod) != null) {
-            var localVariables = table.getLocalVariables(currentMethod);
-            for (int i = 0; i < localVariables.size(); i++) {
-                for (int j = i + 1; j < localVariables.size(); j++) {
-                    if (localVariables.get(i).equals(localVariables.get(j))) {
-                        var message = String.format("Repeated variable '%s'.", varDecl);
-                        addReport(Report.newError(
-                                Stage.SEMANTIC,
-                                NodeUtils.getLine(varDecl),
-                                NodeUtils.getColumn(varDecl),
-                                message,
-                                null)
-                        );
+        if (varDecl.getParent().getKind().equals("MethodDecl")) {
+            if (table.getLocalVariables(currentMethod) != null) {
+                var localVariables = table.getLocalVariables(currentMethod);
+                if (localVariables != null && !localVariables.isEmpty()) {
+                    for (int i = 0; i < localVariables.size(); i++) {
+                        for (int j = i + 1; j < localVariables.size(); j++) {
+                            if (localVariables.get(i).equals(localVariables.get(j))) {
+                                var message = String.format("Repeated variable '%s'.", varDecl);
+                                addReport(Report.newError(
+                                        Stage.SEMANTIC,
+                                        NodeUtils.getLine(varDecl),
+                                        NodeUtils.getColumn(varDecl),
+                                        message,
+                                        null)
+                                );
+                            }
+                        }
                     }
                 }
             }

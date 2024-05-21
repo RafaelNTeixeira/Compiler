@@ -77,7 +77,9 @@ public class JmmSymbolTable implements SymbolTable {
 
     @Override
     public List<Symbol> getLocalVariables(String methodSignature) {
-        return locals.get(methodSignature);
+        var content = locals.get(methodSignature);
+        if (content == null) content = new ArrayList<Symbol>();
+        return content;
     }
 
 }
