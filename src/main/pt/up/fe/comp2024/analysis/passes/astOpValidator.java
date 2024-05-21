@@ -1963,12 +1963,34 @@ public class astOpValidator extends AnalysisVisitor {
                     for (var assignStmt : assigns) {
                         var leftVar = assignStmt.getChildren().get(0);
                         var rightVar = assignStmt.getChildren().get(1);
+                        boolean leftVarIsLocal = false;
+                        boolean rightVarIsLocal = false;
+
+                        if (table.getLocalVariables(currentMethod) != null) {
+                            for (var localVar : table.getLocalVariables(currentMethod)) {
+                                if (leftVar.hasAttribute("name")) {
+                                    if (localVar.getName().equals(leftVar.get("name"))) {
+                                        leftVarIsLocal = true;
+                                    }
+                                }
+                                if (rightVar.hasAttribute("name")) {
+                                    if (localVar.getName().equals(rightVar.get("name"))) {
+                                        rightVarIsLocal = true;
+                                    }
+                                }
+                            }
+                        }
+
                         for (var field : table.getFields()) {
                             if (leftVar.hasAttribute("name")) {
-                                if (field.getName().equals(leftVar.get("name"))) valid = false;
+                                if (field.getName().equals(leftVar.get("name"))) {
+                                    if (!leftVarIsLocal) valid = false; // se não for inicializada como variável local, dá erro por tentar aceder a um field
+                                }
                             }
                             if (rightVar.hasAttribute("name")) {
-                                if (field.getName().equals(rightVar.get("name"))) valid = false;
+                                if (field.getName().equals(rightVar.get("name"))) {
+                                    if (!rightVarIsLocal) valid = false;
+                                }
                             }
                             if (!valid) break;
                         }
