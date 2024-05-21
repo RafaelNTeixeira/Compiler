@@ -17,7 +17,7 @@ import java.util.List;
 
 public class astOpValidator extends AnalysisVisitor {
     private String currentMethod;
-    private List<JmmNode> methods = new ArrayList<JmmNode>();
+    private final List<JmmNode> methods = new ArrayList<JmmNode>();
     List<List<String>> returnTypes = new ArrayList<>();
     private List<String> imports = new ArrayList<>();
     private List<Pair<JmmNode, JmmNode>> functionsCalled = new ArrayList<>(); // Guarda o node da chamada feita a uma função e o node da declaração da variável que chama a função
@@ -487,7 +487,6 @@ public class astOpValidator extends AnalysisVisitor {
         return null;
     }
 
-    // Se estiver a causar problemas apagar
     private Void visitExpression(JmmNode expressionNode, SymbolTable symbolTable) {
         boolean valid = true;
 
@@ -499,6 +498,7 @@ public class astOpValidator extends AnalysisVisitor {
                     String varTypeThatCalledFunction = "";
                     boolean methodFound = false;
                     boolean cameFromImport = false;
+                    boolean foundMethodCalled = false;
 
                     // Verificar se a variável que chama o método existe nas variáveis locais
                     if (!expressionNode.getChildren().isEmpty() && !expressionNode.getChildren().get(0).getChildren("VarRefExpr").isEmpty()) {
@@ -543,7 +543,6 @@ public class astOpValidator extends AnalysisVisitor {
                                     cameFromImport = true;
                                     break;
                                 }
-
                                 // Verificar se a variável que chama o método tem o tipo da classe que extende uma superclasse, sendo esta importada
                                 else if (varTypeThatCalledFunction.equals(symbolTable.getClassName())) {
                                     if (!symbolTable.getSuper().isEmpty()) {
@@ -552,25 +551,36 @@ public class astOpValidator extends AnalysisVisitor {
                                             break;
                                         }
                                     }
-                                } else {
-                                    valid = false;
                                 }
+                                else if (this.methods != null) {
+                                    for (var method : this.methods) {
+                                        if (method.hasAttribute("methodName")) {
+                                            if (method.get("methodName").equals(methodNameCalled)) {
+                                                foundMethodCalled = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (!foundMethodCalled) valid = false;
                             }
                         }
                     }
 
-                    // se a variável local que chamou a função possui o tipo do import, assume-se que a função chamada já existe
-                    if (!cameFromImport) {
-                        // Verificar se o método chamado existe
-                        if (symbolTable.getMethods() != null) {
-                            for (var method : symbolTable.getMethods()) {
-                                if (methodNameCalled.equals(method)) {
-                                    methodFound = true;
-                                    break;
+                    if (!foundMethodCalled) {
+                        // se a variável local que chamou a função possui o tipo do import, assume-se que a função chamada já existe
+                        if (!cameFromImport) {
+                            // Verificar se o método chamado existe
+                            if (symbolTable.getMethods() != null) {
+                                for (var method : symbolTable.getMethods()) {
+                                    if (methodNameCalled.equals(method)) {
+                                        methodFound = true;
+                                        break;
+                                    }
                                 }
+                                if (!methodFound) valid = false;
                             }
                         }
-                        if (!methodFound) valid = false;
                     }
                 }
             }
