@@ -655,7 +655,7 @@ public class astOpValidator extends AnalysisVisitor {
                     }
                 }
 
-                if (paramGivenType.isEmpty()) {
+                if (paramGivenType.isEmpty() && !paramGiven.getKind().equals("BinaryExpr")) {
                     valid = false;
                     break;
                 }
