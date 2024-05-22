@@ -89,7 +89,8 @@ public class JasminGenerator {
 
         // generate class name
         var className = ollirResult.getOllirClass().getClassName();
-        code.append(".class ").append(className).append(NL);
+        //var modifier = ollirResult.getOllirClass().getClassAccessModifier();
+        code.append(".class ").append("public ").append(className).append(NL);
 
         if(ollirResult.getOllirClass().getSuperClass() != null) {
             var superName = ollirResult.getOllirClass().getSuperClass();
@@ -106,7 +107,7 @@ public class JasminGenerator {
             }
 
         } else {
-            code.append(".super java/lang/Object").append(NL).append(NL);
+            code.append(".super java/lang/Object").append(NL);
         }
 
         for (var field : ollirResult.getOllirClass().getFields()){
@@ -116,7 +117,6 @@ public class JasminGenerator {
 
         // generate a single constructor method
         var initDefaultConstructor = """
-                ;default constructor
                 .method public <init>()V
                     aload_0
                     """;
@@ -273,7 +273,7 @@ public class JasminGenerator {
         code.append(returnType).append(NL);
 
         // Add limits
-        code.append(TAB).append(".limit stack 99").append(NL);
+        code.append(TAB).append(".limit stack 20").append(NL);
         cur_stack = 0;
         lim_stack = 0;
         //code.append(TAB).append(".limit stack ").append(lim_stack).append(NL);
@@ -313,7 +313,6 @@ public class JasminGenerator {
         var lhs = assign.getDest();
         int reg;
 
-        //fazer isto para dar teste privado
         if (!(lhs instanceof Operand)) {
             var cla = lhs.getClass().getName();
             reg = currentMethod.getVarTable().get(cla).getVirtualReg();
@@ -592,7 +591,7 @@ public class JasminGenerator {
         var code = new StringBuilder();
         call_arg = -1;
 
-        for (var agr : callInstruction.getArguments()){
+        for (var agr : callInstruction.getArguments()) {
             call_arg++;
             code.append(generators.apply(agr));
         }
@@ -602,8 +601,12 @@ public class JasminGenerator {
 
     private String getLengthCall(CallInstruction callInstruction) {
         var code = new StringBuilder();
-        code.append(generators.apply(callInstruction.getArguments().get(0)));
-        code.append("arraylenght").append(NL);
+        /*
+        if(!callInstruction.getArguments().isEmpty()) {
+            code.append(generators.apply(callInstruction.getArguments().get(0)));
+        }*/
+        code.append(generators.apply(callInstruction.getCaller()));
+        code.append("arraylength").append(NL);
 
         return code.toString();
     }
@@ -788,7 +791,9 @@ public class JasminGenerator {
     private String generateUnaryOp(UnaryOpInstruction unaryOpInstruction) {
         var code = new StringBuilder();
         code.append(generators.apply(unaryOpInstruction.getOperand()));
-        code.append("iconst_1").append(NL); //alterar
+        if(unaryOpInstruction.getOperation().getOpType().equals(OperationType.NOTB)) {
+            code.append("iconst_1").append(NL); //alterar
+        }
         var opType = unaryOpInstruction.getOperation().getOpType();
         code.append(getOperantionType(opType)).append(NL);
         return code.toString();
