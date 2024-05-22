@@ -59,6 +59,7 @@ public class JasminGenerator {
         generators.put(CallInstruction.class, this::generateCall);
         generators.put(SingleOpInstruction.class, this::generateSingleOp);
         generators.put(LiteralElement.class, this::generateLiteral);
+        generators.put(ArrayOperand.class, this::generateArrayOperand);
         generators.put(Operand.class, this::generateOperand);
         generators.put(UnaryOpInstruction.class, this::generateUnaryOp);
         generators.put(BinaryOpInstruction.class, this::generateBinaryOp);
@@ -369,7 +370,12 @@ public class JasminGenerator {
 
         code.append(generators.apply(( (ArrayOperand) assign.getDest()).getIndexOperands().get(0)));
         code.append(generators.apply(assign.getRhs()));
-        code.append(generators.apply(assign.getDest()));
+
+        if (assign.getTypeOfAssign().getTypeOfElement().equals(ElementType.INT32)){
+            code.append("iastore").append(NL);
+        } else {
+            code.append(generators.apply(assign.getDest()));
+        }
         return code.toString();
     }
 
@@ -740,6 +746,16 @@ public class JasminGenerator {
             code.append(NL);
 
         }
+        return code.toString();
+    }
+
+    private String generateArrayOperand(ArrayOperand arrayOperand) {
+        incrementStackNumber(1);
+        var code = new StringBuilder();
+        code.append("aload ").append(currentMethod.getVarTable().get(arrayOperand.getName()).getVirtualReg()).append(NL);
+        code.append(generators.apply(arrayOperand.getIndexOperands().get(0)));
+        code.append("iaload").append(NL);
+        cur_stack--;
         return code.toString();
     }
 
