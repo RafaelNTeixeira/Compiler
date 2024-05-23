@@ -283,6 +283,12 @@ public class JasminGenerator {
         var instCodeFull = new StringBuilder();
 
         for (var inst : method.getInstructions()) {
+            for(var lable : method.getLabels().entrySet()){
+                    if(lable.getValue().equals(inst)) {
+                        instCodeFull.append(TAB).append(lable.getKey()).append(":").append(NL);
+                    }
+            }
+
             var instCode = StringLines.getLines(generators.apply(inst)).stream()
                     .collect(Collectors.joining(NL + TAB, TAB, NL));
             instCodeFull.append(instCode);
@@ -643,7 +649,7 @@ public class JasminGenerator {
                 result = getBinaryoperBranch((BinaryOpInstruction) condBranchInstruction.getCondition());
             }
             default -> {
-                code.append(generators.apply(condBranchInstruction.getCondition())).append(TAB);
+                code.append(generators.apply(condBranchInstruction.getCondition()));
                 code.append("ifne ");
                 cur_stack--;
             }
@@ -659,7 +665,7 @@ public class JasminGenerator {
     private String getUnaryoperBranch(UnaryOpInstruction unaryOpInstruction){
         var code = new StringBuilder();
         if(unaryOpInstruction.getOperation().getOpType() == OperationType.NOTB){
-            code.append(generators.apply(unaryOpInstruction.getOperand())).append(TAB);
+            code.append(generators.apply(unaryOpInstruction.getOperand()));
             code.append("ifeq ");
             cur_stack--;
         }
@@ -668,48 +674,64 @@ public class JasminGenerator {
 
     private String getBinaryoperBranch(BinaryOpInstruction binaryOpInstruction){
         var code = new StringBuilder();
+        var code1 = new StringBuilder();
+        var code2 = new StringBuilder();
+        var code3 = new StringBuilder();
+        boolean if1 = false;
+        boolean if2 = false;
+        boolean if3 = false;
+
         Integer literalOp = null;
         switch (binaryOpInstruction.getOperation().getOpType()){
             case LTH -> {
-                if(binaryOpInstruction.getLeftOperand() instanceof LiteralElement){
-                    literalOp = Integer.parseInt(((LiteralElement) binaryOpInstruction.getLeftOperand()).getLiteral());
-                    code.append(generators.apply(binaryOpInstruction.getRightOperand())).append(TAB);
-                    code.append("ifgt ");
-                    cur_stack--;
-                }
                 if(binaryOpInstruction.getRightOperand() instanceof LiteralElement){
                     literalOp = Integer.parseInt(((LiteralElement) binaryOpInstruction.getRightOperand()).getLiteral());
-                    code.append(generators.apply(binaryOpInstruction.getLeftOperand())).append(TAB);
-                    code.append("iflt ");
+                    code1.append(generators.apply(binaryOpInstruction.getLeftOperand()));
+                    code1.append("iflt ");
                     cur_stack--;
+                    if1 = true;
                 }
-                if(literalOp != null && literalOp == 0){
-                    code.append(generators.apply(binaryOpInstruction.getLeftOperand()))
-                            .append(generators.apply(binaryOpInstruction.getRightOperand())).append(TAB);
-                    code.append("if_icmplt ");
+
+                if(binaryOpInstruction.getLeftOperand() instanceof LiteralElement){
+                    literalOp = Integer.parseInt(((LiteralElement) binaryOpInstruction.getLeftOperand()).getLiteral());
+                    code2.append(generators.apply(binaryOpInstruction.getRightOperand()));
+                    code2.append("ifgt ");
+                    cur_stack--;
+                    if2 = true;
+                }
+
+                if(!(literalOp != null && literalOp == 0)){
+                    code3.append(generators.apply(binaryOpInstruction.getLeftOperand()))
+                            .append(generators.apply(binaryOpInstruction.getRightOperand()));
+                    code3.append("if_icmplt ");
                     cur_stack -= 2;
+                    if3 = true;
                 }
             }
 
             case GTE -> {
-                if(binaryOpInstruction.getLeftOperand() instanceof LiteralElement){
-                    literalOp = Integer.parseInt(((LiteralElement) binaryOpInstruction.getLeftOperand()).getLiteral());
-                    code.append(generators.apply(binaryOpInstruction.getRightOperand())).append(TAB);
-                    code.append("ifge ");
-                    cur_stack--;
-                }
-
                 if(binaryOpInstruction.getRightOperand() instanceof LiteralElement){
                     literalOp = Integer.parseInt(((LiteralElement) binaryOpInstruction.getRightOperand()).getLiteral());
-                    code.append(generators.apply(binaryOpInstruction.getLeftOperand())).append(TAB);
-                    code.append("ifle ");
+                    code1.append(generators.apply(binaryOpInstruction.getLeftOperand()));
+                    code1.append("ifle ");
                     cur_stack--;
+                    if1 = true;
                 }
-                if(literalOp != null && literalOp == 0){
-                    code.append(generators.apply(binaryOpInstruction.getLeftOperand()))
-                            .append(generators.apply(binaryOpInstruction.getRightOperand())).append(TAB);
-                    code.append("if_icmpge ");
+
+                if(binaryOpInstruction.getLeftOperand() instanceof LiteralElement) {
+                    literalOp = Integer.parseInt(((LiteralElement) binaryOpInstruction.getLeftOperand()).getLiteral());
+                    code2.append(generators.apply(binaryOpInstruction.getRightOperand()));
+                    code2.append("ifge ");
+                    cur_stack--;
+                    if2 = true;
+                }
+
+                if(!(literalOp != null && literalOp == 0)){
+                    code3.append(generators.apply(binaryOpInstruction.getLeftOperand()))
+                            .append(generators.apply(binaryOpInstruction.getRightOperand()));
+                    code3.append("if_icmpge ");
                     cur_stack -= 2;
+                    if3 = true;
                 }
             }
 
@@ -721,6 +743,16 @@ public class JasminGenerator {
 
             default -> code.append("");
         }
+        if(if1){
+            if(if2){
+                if(if3){
+                    return code.append(code3).toString();
+                }
+                return code.append(code2).toString();
+            }
+            return code.append(code1).toString();
+        }
+
         return code.toString();
     }
 
