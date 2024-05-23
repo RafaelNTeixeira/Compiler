@@ -273,12 +273,8 @@ public class JasminGenerator {
         var returnType = getJasminType(method.getReturnType());
         code.append(returnType).append(NL);
 
-        // Add limits
-        code.append(TAB).append(".limit stack 20").append(NL);
         cur_stack = 0;
         lim_stack = 0;
-        //code.append(TAB).append(".limit stack ").append(lim_stack).append(NL);
-        code.append(TAB).append(".limit locals ").append(getLocalNumber(method)).append(NL);
 
         var instCodeFull = new StringBuilder();
 
@@ -299,6 +295,9 @@ public class JasminGenerator {
                 cur_stack--;
             }
         }
+        code.append(TAB).append(".limit stack 20").append(NL);
+        //code.append(TAB).append(".limit stack ").append(lim_stack).append(NL);
+        code.append(TAB).append(".limit locals ").append(getLocalNumber(method)).append(NL);
 
         code.append(instCodeFull);
 
@@ -893,10 +892,18 @@ public class JasminGenerator {
 
     private String getLocalNumber(Method method){
         var code = new StringBuilder();
+        var list = new ArrayList<>();
 
-        var number = method.getVarTable().values().size();
+        for (var value : method.getVarTable().values()) {
+            if (!list.contains(value.getVirtualReg()))
+                list.add(value.getVirtualReg());
+        }
 
-        if(!method.isStaticMethod()) number++;
+        var number = list.size();
+
+        if (!list.contains(0) && !method.isStaticMethod()){
+            number++;
+        }
 
         code.append(number);
         return code.toString();
