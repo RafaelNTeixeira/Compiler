@@ -309,6 +309,44 @@ public class JasminGenerator {
         return code.toString();
     }
 
+    private String IincHandler(AssignInstruction assign) {
+        BinaryOpInstruction binInst = (BinaryOpInstruction) assign.getRhs();
+        OperationType op = binInst.getOperation().getOpType();
+        boolean expectedOperationType = op.equals(OperationType.SUB) || op.equals(OperationType.ADD);
+
+        if (expectedOperationType) {
+            boolean onlyLeftOperandIsLiteral = binInst.getLeftOperand().isLiteral() && !binInst.getRightOperand().isLiteral();
+            boolean onlyRightOperandIsLiteral = !binInst.getLeftOperand().isLiteral() && binInst.getRightOperand().isLiteral();
+
+            if (onlyLeftOperandIsLiteral || onlyRightOperandIsLiteral) {
+                Operand ope;
+                LiteralElement lit;
+                if (binInst.getLeftOperand().isLiteral()) {
+                    ope = (Operand) binInst.getRightOperand();
+                    lit = (LiteralElement) binInst.getLeftOperand();
+                } else {
+                    ope = (Operand) binInst.getLeftOperand();
+                    lit = (LiteralElement) binInst.getRightOperand();
+                }
+
+                int litValue = Integer.parseInt(lit.getLiteral());
+                if (op.equals(OperationType.SUB)) {
+                    litValue = -litValue;
+                }
+
+                boolean hasSameVarName = ope.getName().equals(((Operand) assign.getDest()).getName());
+                boolean hasOneByte = (litValue >= -128 && litValue <= 127);
+
+                if (hasSameVarName && hasOneByte) {
+                    int virtualRegId = currentMethod.getVarTable().get(ope.getName()).getVirtualReg();
+
+                    return "\tiinc " + virtualRegId + " " + litValue + "\n";
+                }
+            }
+        }
+        return null;
+    }
+
     private String generateAssign(AssignInstruction assign) {
         var code = new StringBuilder();
 
@@ -318,6 +356,7 @@ public class JasminGenerator {
         // store value in the stack in destination
         var lhs = assign.getDest();
         int reg;
+
 
         if (!(lhs instanceof Operand)) {
             var cla = lhs.getClass().getName();
@@ -333,6 +372,10 @@ public class JasminGenerator {
         String storeType;
         if(assign.getDest() instanceof ArrayOperand){
             code.append(getAssignArray(assign, reg));
+        }
+        else if (assign.getRhs().getInstType() == InstructionType.BINARYOPER) {
+            String ret = this.IincHandler(assign);
+            if (ret != null) return ret;
         } else {
             if (reg > 3) {
                 storeType = switch (storeTypeName) {

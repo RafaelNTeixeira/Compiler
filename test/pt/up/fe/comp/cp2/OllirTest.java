@@ -33,6 +33,12 @@ public class OllirTest {
     }
 
     @Test
+    public void test() {
+        testJmmCompilation("pt/up/fe/comp/cp2/ollir/Test.jmm",
+                this::compileMethodInvocation);
+    }
+
+    @Test
     public void compileAssignment() {
         testJmmCompilation("pt/up/fe/comp/cp2/ollir/CompileAssignment.jmm", this::compileAssignment);
     }

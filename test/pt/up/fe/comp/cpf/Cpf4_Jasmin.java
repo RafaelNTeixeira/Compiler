@@ -128,7 +128,6 @@ public class Cpf4_Jasmin {
         CpUtils.runJasmin(getJasminResult("arithmetic/Arithmetic_not.ollir"), "false");
     }
 
-
     /*checks if an addition is correct (more than 2 values)*/
     @Test
     public void section3_ControlFlow_If_Simple() {
