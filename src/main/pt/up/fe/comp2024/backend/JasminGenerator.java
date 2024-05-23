@@ -11,6 +11,8 @@ import pt.up.fe.specs.util.utilities.StringLines;
 import javax.lang.model.type.NullType;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 /**
@@ -36,6 +38,10 @@ public class JasminGenerator {
     ClassUnit currentClassUnit;
     private final FunctionClassMap<TreeNode, String> generators;
 
+    int lim_stack;
+    int cur_stack;
+    int call_arg;
+
     public JasminGenerator(OllirResult ollirResult) {
         this.ollirResult = ollirResult;
 
@@ -53,8 +59,12 @@ public class JasminGenerator {
         generators.put(CallInstruction.class, this::generateCall);
         generators.put(SingleOpInstruction.class, this::generateSingleOp);
         generators.put(LiteralElement.class, this::generateLiteral);
+        generators.put(ArrayOperand.class, this::generateArrayOperand);
         generators.put(Operand.class, this::generateOperand);
+        generators.put(UnaryOpInstruction.class, this::generateUnaryOp);
         generators.put(BinaryOpInstruction.class, this::generateBinaryOp);
+        generators.put(GotoInstruction.class, this::generateGoto);
+        generators.put(CondBranchInstruction.class, this::generateBranch);
         generators.put(ReturnInstruction.class, this::generateReturn);
     }
 
@@ -80,7 +90,8 @@ public class JasminGenerator {
 
         // generate class name
         var className = ollirResult.getOllirClass().getClassName();
-        code.append(".class ").append(className).append(NL);
+        //var modifier = ollirResult.getOllirClass().getClassAccessModifier();
+        code.append(".class ").append("public ").append(className).append(NL);
 
         if(ollirResult.getOllirClass().getSuperClass() != null) {
             var superName = ollirResult.getOllirClass().getSuperClass();
@@ -97,7 +108,7 @@ public class JasminGenerator {
             }
 
         } else {
-            code.append(".super java/lang/Object").append(NL).append(NL);
+            code.append(".super java/lang/Object").append(NL);
         }
 
         for (var field : ollirResult.getOllirClass().getFields()){
@@ -107,7 +118,6 @@ public class JasminGenerator {
 
         // generate a single constructor method
         var initDefaultConstructor = """
-                ;default constructor
                 .method public <init>()V
                     aload_0
                     """;
@@ -194,7 +204,7 @@ public class JasminGenerator {
         jasminType = switch (typeName) {
             case "INT32" -> "I";
             case "BOOLEAN" -> "Z";
-            case "ARRAYREF" -> "[";
+            case "ARRAYREF" -> getArrayType(type);
             case "OBJECTREF" ->  getObjectType(type);
             case "CLASS", "THIS" -> "L";
             case "STRING" -> "Ljava/lang/String;";
@@ -210,6 +220,20 @@ public class JasminGenerator {
         //var className = ollirResult.getOllirClass().getClassName();
         code.append("L").append(name).append(";");
 
+        return code.toString();
+    }
+
+    private String getArrayType(Type type){
+        var code = new StringBuilder();
+        var name = ((ArrayType) type).getElementType().toString();
+        var jtype = switch (name){
+            case "INT32" -> "I";
+            case "BOOLEAN" -> "Z";
+            case "STRING" -> "Ljava/lang/String;";
+            case "VOID" -> "V";
+            default -> throw new IllegalStateException("Unexpected value: " + name);
+        };
+        code.append("[").append(jtype);
         return code.toString();
     }
 
@@ -249,22 +273,33 @@ public class JasminGenerator {
         var returnType = getJasminType(method.getReturnType());
         code.append(returnType).append(NL);
 
+        cur_stack = 0;
+        lim_stack = 0;
 
-
-        // Add limits
-        code.append(TAB).append(".limit stack 99").append(NL);
-        code.append(TAB).append(".limit locals 99").append(NL);
+        var instCodeFull = new StringBuilder();
 
         for (var inst : method.getInstructions()) {
+            for(var lable : method.getLabels().entrySet()){
+                    if(lable.getValue().equals(inst)) {
+                        instCodeFull.append(TAB).append(lable.getKey()).append(":").append(NL);
+                    }
+            }
+
             var instCode = StringLines.getLines(generators.apply(inst)).stream()
                     .collect(Collectors.joining(NL + TAB, TAB, NL));
-            code.append(instCode);
+            instCodeFull.append(instCode);
             // fazer if para o pop
             if (inst.getInstType() == InstructionType.CALL
                     && ((CallInstruction) inst).getReturnType().getTypeOfElement() != ElementType.VOID) {
-                code.append(TAB).append("pop").append(NL);
+                instCodeFull.append(TAB).append("pop").append(NL);
+                cur_stack--;
             }
         }
+        code.append(TAB).append(".limit stack 20").append(NL);
+        //code.append(TAB).append(".limit stack ").append(lim_stack).append(NL);
+        code.append(TAB).append(".limit locals ").append(getLocalNumber(method)).append(NL);
+
+        code.append(instCodeFull);
 
         code.append(".end method\n");
 
@@ -272,6 +307,44 @@ public class JasminGenerator {
         currentMethod = null;
 
         return code.toString();
+    }
+
+    private String IincHandler(AssignInstruction assign) {
+        BinaryOpInstruction binInst = (BinaryOpInstruction) assign.getRhs();
+        OperationType op = binInst.getOperation().getOpType();
+        boolean expectedOperationType = op.equals(OperationType.SUB) || op.equals(OperationType.ADD);
+
+        if (expectedOperationType) {
+            boolean onlyLeftOperandIsLiteral = binInst.getLeftOperand().isLiteral() && !binInst.getRightOperand().isLiteral();
+            boolean onlyRightOperandIsLiteral = !binInst.getLeftOperand().isLiteral() && binInst.getRightOperand().isLiteral();
+
+            if (onlyLeftOperandIsLiteral || onlyRightOperandIsLiteral) {
+                Operand ope;
+                LiteralElement lit;
+                if (binInst.getLeftOperand().isLiteral()) {
+                    ope = (Operand) binInst.getRightOperand();
+                    lit = (LiteralElement) binInst.getLeftOperand();
+                } else {
+                    ope = (Operand) binInst.getLeftOperand();
+                    lit = (LiteralElement) binInst.getRightOperand();
+                }
+
+                int litValue = Integer.parseInt(lit.getLiteral());
+                if (op.equals(OperationType.SUB)) {
+                    litValue = -litValue;
+                }
+
+                boolean hasSameVarName = ope.getName().equals(((Operand) assign.getDest()).getName());
+                boolean hasOneByte = (litValue >= -128 && litValue <= 127);
+
+                if (hasSameVarName && hasOneByte) {
+                    int virtualRegId = currentMethod.getVarTable().get(ope.getName()).getVirtualReg();
+
+                    return "\tiinc " + virtualRegId + " " + litValue + "\n";
+                }
+            }
+        }
+        return null;
     }
 
     private String generateAssign(AssignInstruction assign) {
@@ -284,7 +357,7 @@ public class JasminGenerator {
         var lhs = assign.getDest();
         int reg;
 
-        //fazer isto para dar teste privado
+
         if (!(lhs instanceof Operand)) {
             var cla = lhs.getClass().getName();
             reg = currentMethod.getVarTable().get(cla).getVirtualReg();
@@ -297,19 +370,67 @@ public class JasminGenerator {
 
         var storeTypeName = assign.getTypeOfAssign().getTypeOfElement().name();
         String storeType;
-        storeType = switch (storeTypeName) {
-            case "INT32", "BOOLEAN" -> "istore ";
-            case "ARRAYREF", "STRING", "OBJECTREF", "THIS", "CLASS" -> "astore ";
-            case "VOID" -> "store ";
-            default -> throw new IllegalArgumentException("Unsupported type: " + storeTypeName);
-        };
+        if(assign.getDest() instanceof ArrayOperand){
+            code.append(getAssignArray(assign, reg));
+        }
+        /*
+        else if (assign.getRhs().getInstType() == InstructionType.BINARYOPER) {
+            String ret = this.IincHandler(assign);
+            if (ret != null) return ret;
+        } */
+        else {
+            if (reg > 3) {
+                storeType = switch (storeTypeName) {
+                    case "INT32", "BOOLEAN" -> "istore ";
+                    case "ARRAYREF", "STRING", "OBJECTREF", "THIS", "CLASS" -> "astore ";
+                    case "VOID" -> "store ";
+                    default -> throw new IllegalArgumentException("Unsupported type: " + storeTypeName);
+                };
+            } else {
+                storeType = switch (storeTypeName) {
+                    case "INT32", "BOOLEAN" -> "istore_";
+                    case "ARRAYREF", "STRING", "OBJECTREF", "THIS", "CLASS" -> "astore_";
+                    case "VOID" -> "store_";
+                    default -> throw new IllegalArgumentException("Unsupported type: " + storeTypeName);
+                };
+            }
 
-        code.append(storeType).append(reg).append(NL);
+            int nStack;
+            nStack = switch (storeTypeName) {
+                case "INT32", "BOOLEAN" -> 3;
+                case "ARRAYREF", "STRING", "OBJECTREF", "THIS", "CLASS", "VOID" -> 1;
+                default -> throw new IllegalArgumentException("Unsupported type: " + storeTypeName);
+            };
+            cur_stack -= nStack;
 
+            code.append(storeType).append(reg).append(NL);
+
+        }
+        return code.toString();
+    }
+
+    //var muito bem esta função
+    private String getAssignArray(AssignInstruction assign, int reg) {
+        var code = new StringBuilder();
+        incrementStackNumber(1);
+
+        if(reg > 3) code.append("aload ").append(reg);
+        else code.append("aload_").append(reg);
+        code.append(NL);
+
+        code.append(generators.apply(( (ArrayOperand) assign.getDest()).getIndexOperands().get(0)));
+        code.append(generators.apply(assign.getRhs()));
+
+        if (assign.getTypeOfAssign().getTypeOfElement().equals(ElementType.INT32)){
+            code.append("iastore").append(NL);
+        } else {
+            code.append(generators.apply(assign.getDest()));
+        }
         return code.toString();
     }
 
     private String generatePutField(PutFieldInstruction putFieldInstruction) {
+        cur_stack -= 2;
         var code = new StringBuilder();
         var type = getJasminType(putFieldInstruction.getValue().getType());
         var spec1 = this.currentClassUnit.getClassName();
@@ -341,6 +462,7 @@ public class JasminGenerator {
 
 
     private String generateCall(CallInstruction callInstruction){
+        call_arg = 0;
         String code;
         // nestes todos ainda está tudo em código que precisa de ser melhorado
         code = switch (callInstruction.getInvocationType()) {
@@ -348,11 +470,18 @@ public class JasminGenerator {
             case invokeinterface -> getInterfaceCall(callInstruction);
             case invokespecial -> getSpecialCall(callInstruction);
             case invokestatic -> getStaticCall(callInstruction);
-            case NEW -> getNewCall(callInstruction);
+            case NEW -> {
+                if (callInstruction.getReturnType().getTypeOfElement() == ElementType.OBJECTREF) {
+                    yield getNewCall(callInstruction);
+                } else {
+                    yield getNewArrayCall(callInstruction);
+                }
+            }
             case arraylength -> getLengthCall(callInstruction);
             case ldc -> getLdcCall(callInstruction);
         };
 
+        cur_stack -= call_arg;
         return code;
     }
 
@@ -361,8 +490,11 @@ public class JasminGenerator {
         var className = ollirResult.getOllirClass().getClassName();
         code.append(generators.apply(callInstruction.getOperands().get(0)));
 
+        call_arg = 1;
+
         for (var argument : callInstruction.getArguments()) {
             code.append(generators.apply(argument));
+            call_arg++;
         }
 
         code.append("invokevirtual ");
@@ -394,6 +526,8 @@ public class JasminGenerator {
         var retType = getJasminType(callInstruction.getReturnType());
         code.append(retType).append(NL);
 
+        call_arg = retType.equals("V") ? call_arg : call_arg - 1;
+
         return code.toString();
     }
 
@@ -407,8 +541,10 @@ public class JasminGenerator {
     private String getStaticCall(CallInstruction callInstruction) {
         var code = new StringBuilder();
         var className = ollirResult.getOllirClass().getClassName();
+        call_arg = 0;
 
         for (var argument : callInstruction.getArguments()) {
+            call_arg++;
             code.append(generators.apply(argument));
         }
 
@@ -431,7 +567,6 @@ public class JasminGenerator {
         }
 
         code.append("/");
-        // ver o que é este elemento
         var methodName = ((LiteralElement) callInstruction.getMethodName()).getLiteral().replace("\"", "");
         code.append(methodName);
         // Argumentos
@@ -442,6 +577,8 @@ public class JasminGenerator {
         code.append(")");
         var retType = getJasminType(callInstruction.getReturnType());
         code.append(retType).append(NL);
+
+        call_arg = retType.equals("V") ? call_arg : call_arg - 1;
 
         return code.toString();
     }
@@ -476,12 +613,16 @@ public class JasminGenerator {
         var retType = getJasminType(callInstruction.getReturnType());
         code.append(retType).append(NL);
 
+        call_arg = retType.equals("V") ? call_arg : call_arg - 1;
+
         return code.toString();
     }
 
     private String getNewCall(CallInstruction callInstruction) {
         var code = new StringBuilder();
+        call_arg = -1;
         for (var agr : callInstruction.getArguments()){
+            call_arg++;
             code.append(generators.apply(agr));
         }
 
@@ -502,10 +643,26 @@ public class JasminGenerator {
         return code.toString();
     }
 
+    private String getNewArrayCall(CallInstruction callInstruction){
+        var code = new StringBuilder();
+        call_arg = -1;
+
+        for (var agr : callInstruction.getArguments()) {
+            call_arg++;
+            code.append(generators.apply(agr));
+        }
+        code.append("newarray int").append(NL);
+        return code.toString();
+    }
+
     private String getLengthCall(CallInstruction callInstruction) {
         var code = new StringBuilder();
-        code.append(generators.apply(callInstruction.getArguments().get(0)));
-        code.append("arraylenght").append(NL);
+        /*
+        if(!callInstruction.getArguments().isEmpty()) {
+            code.append(generators.apply(callInstruction.getArguments().get(0)));
+        }*/
+        code.append(generators.apply(callInstruction.getCaller()));
+        code.append("arraylength").append(NL);
 
         return code.toString();
     }
@@ -517,11 +674,138 @@ public class JasminGenerator {
         return code.toString();
     }
 
+    private String generateGoto(GotoInstruction gotoInstruction) {
+        var code = new StringBuilder();
+        code.append("goto ").append(gotoInstruction.getLabel()).append(NL);
+        return code.toString();
+    }
+
+    private String generateBranch(CondBranchInstruction condBranchInstruction) {
+        var code = new StringBuilder();
+        var condition = condBranchInstruction.getCondition().getInstType();
+        String result = new String();
+
+        switch (condition){
+            case UNARYOPER -> {
+                result = getUnaryoperBranch((UnaryOpInstruction) condBranchInstruction.getCondition());
+            }
+            case BINARYOPER -> {
+                result = getBinaryoperBranch((BinaryOpInstruction) condBranchInstruction.getCondition());
+            }
+            default -> {
+                code.append(generators.apply(condBranchInstruction.getCondition()));
+                code.append("ifne ");
+                cur_stack--;
+            }
+
+        }
+        code.append(result);
+        code.append(condBranchInstruction.getLabel()).append(NL);
+
+
+        return code.toString();
+    }
+
+    private String getUnaryoperBranch(UnaryOpInstruction unaryOpInstruction){
+        var code = new StringBuilder();
+        if(unaryOpInstruction.getOperation().getOpType() == OperationType.NOTB){
+            code.append(generators.apply(unaryOpInstruction.getOperand()));
+            code.append("ifeq ");
+            cur_stack--;
+        }
+        return code.toString();
+    }
+
+    private String getBinaryoperBranch(BinaryOpInstruction binaryOpInstruction){
+        var code = new StringBuilder();
+        var code1 = new StringBuilder();
+        var code2 = new StringBuilder();
+        var code3 = new StringBuilder();
+        boolean if1 = false;
+        boolean if2 = false;
+        boolean if3 = false;
+
+        Integer literalOp = null;
+        switch (binaryOpInstruction.getOperation().getOpType()){
+            case LTH -> {
+                if(binaryOpInstruction.getRightOperand() instanceof LiteralElement){
+                    literalOp = Integer.parseInt(((LiteralElement) binaryOpInstruction.getRightOperand()).getLiteral());
+                    code1.append(generators.apply(binaryOpInstruction.getLeftOperand()));
+                    code1.append("iflt ");
+                    cur_stack--;
+                    if1 = true;
+                }
+
+                if(binaryOpInstruction.getLeftOperand() instanceof LiteralElement){
+                    literalOp = Integer.parseInt(((LiteralElement) binaryOpInstruction.getLeftOperand()).getLiteral());
+                    code2.append(generators.apply(binaryOpInstruction.getRightOperand()));
+                    code2.append("ifgt ");
+                    cur_stack--;
+                    if2 = true;
+                }
+
+                if(!(literalOp != null && literalOp == 0)){
+                    code3.append(generators.apply(binaryOpInstruction.getLeftOperand()))
+                            .append(generators.apply(binaryOpInstruction.getRightOperand()));
+                    code3.append("if_icmplt ");
+                    cur_stack -= 2;
+                    if3 = true;
+                }
+            }
+
+            case GTE -> {
+                if(binaryOpInstruction.getRightOperand() instanceof LiteralElement){
+                    literalOp = Integer.parseInt(((LiteralElement) binaryOpInstruction.getRightOperand()).getLiteral());
+                    code1.append(generators.apply(binaryOpInstruction.getLeftOperand()));
+                    code1.append("ifle ");
+                    cur_stack--;
+                    if1 = true;
+                }
+
+                if(binaryOpInstruction.getLeftOperand() instanceof LiteralElement) {
+                    literalOp = Integer.parseInt(((LiteralElement) binaryOpInstruction.getLeftOperand()).getLiteral());
+                    code2.append(generators.apply(binaryOpInstruction.getRightOperand()));
+                    code2.append("ifge ");
+                    cur_stack--;
+                    if2 = true;
+                }
+
+                if(!(literalOp != null && literalOp == 0)){
+                    code3.append(generators.apply(binaryOpInstruction.getLeftOperand()))
+                            .append(generators.apply(binaryOpInstruction.getRightOperand()));
+                    code3.append("if_icmpge ");
+                    cur_stack -= 2;
+                    if3 = true;
+                }
+            }
+
+            case ANDB -> {
+                code.append(generators.apply(binaryOpInstruction));
+                code.append("ifne ");
+                cur_stack--;
+            }
+
+            default -> code.append("");
+        }
+        if(if1){
+            if(if2){
+                if(if3){
+                    return code.append(code3).toString();
+                }
+                return code.append(code2).toString();
+            }
+            return code.append(code1).toString();
+        }
+
+        return code.toString();
+    }
+
     private String generateSingleOp(SingleOpInstruction singleOp) {
         return generators.apply(singleOp.getSingleOperand());
     }
 
     private String generateLiteral(LiteralElement literal) {
+        incrementStackNumber(1);
         var code = new StringBuilder();
         if (literal.getType().getTypeOfElement() != ElementType.INT32 && literal.getType().getTypeOfElement() != ElementType.BOOLEAN) {
             return "ldc " + literal.getLiteral() + NL;
@@ -541,25 +825,75 @@ public class JasminGenerator {
         return code.toString();
     }
 
+    private String generateArrayOperand(ArrayOperand arrayOperand) {
+        incrementStackNumber(1);
+        var code = new StringBuilder();
+        code.append("aload ").append(currentMethod.getVarTable().get(arrayOperand.getName()).getVirtualReg()).append(NL);
+        code.append(generators.apply(arrayOperand.getIndexOperands().get(0)));
+        code.append("iaload").append(NL);
+        cur_stack--;
+        return code.toString();
+    }
+
     private String generateOperand(Operand operand) {
+        incrementStackNumber(1);
         // get register
         var reg = currentMethod.getVarTable().get(operand.getName()).getVirtualReg();
 
-        switch (operand.getType().getTypeOfElement().name()) {
-            case "INT32", "BOOLEAN" -> {
-                return "iload " + reg + NL;
+        if (reg > 3){
+            switch (operand.getType().getTypeOfElement().name()) {
+                case "INT32", "BOOLEAN" -> {
+                    return "iload " + reg + NL;
+                }
+                case "ARRAYREF", "OBJECTREF", "CLASS", "STRING" -> {
+                    return "aload " + reg + NL;
+                }
+                case "THIS" -> {
+                    return "aload_" + reg + NL;
+                }
             }
-            case "ARRAYREF", "OBJECTREF", "CLASS", "STRING" -> {
-                return "aload " + reg + NL;
-            }
-            case "THIS" -> {
-                return "aload_" + reg + NL;
+        } else {
+            switch (operand.getType().getTypeOfElement().name()) {
+                case "INT32", "BOOLEAN" -> {
+                    return "iload_" + reg + NL;
+                }
+                case "ARRAYREF", "OBJECTREF", "CLASS", "STRING", "THIS" -> {
+                    return "aload_" + reg + NL;
+                }
             }
         }
+
         return "";
     }
 
+    private String getOperantionType(OperationType operationType){
+        return switch (operationType){
+            case ADD -> "iadd";
+            case MUL -> "imul";
+            case SUB -> "isub";
+            case DIV -> "idiv";
+            case ANDB -> "iand";
+            case NOTB -> "ixor";
+            case LTH -> "if_icmplt";
+            case GTE -> "if_icmpte";
+            default -> null;
+        };
+    }
+
+    private String generateUnaryOp(UnaryOpInstruction unaryOpInstruction) {
+        var code = new StringBuilder();
+        code.append(generators.apply(unaryOpInstruction.getOperand()));
+        if(unaryOpInstruction.getOperation().getOpType().equals(OperationType.NOTB)) {
+            code.append("iconst_1").append(NL); //alterar
+        }
+        var opType = unaryOpInstruction.getOperation().getOpType();
+        code.append(getOperantionType(opType)).append(NL);
+        return code.toString();
+    }
+
     private String generateBinaryOp(BinaryOpInstruction binaryOp) {
+        cur_stack --;
+        //Fazer aqui as alterações para a iinc
         var code = new StringBuilder();
 
         // load values on the left and on the right
@@ -572,6 +906,8 @@ public class JasminGenerator {
             case MUL -> "imul";
             case DIV -> "idiv";
             case SUB -> "isub";
+            case ANDB -> "iand";
+            case NOTB -> "ifeq";
             default -> throw new NotImplementedException(binaryOp.getOperation().getOpType());
         };
 
@@ -597,6 +933,30 @@ public class JasminGenerator {
         code.append(returnType).append(NL);
 
         return code.toString();
+    }
+
+    private String getLocalNumber(Method method){
+        var code = new StringBuilder();
+        var list = new ArrayList<>();
+
+        for (var value : method.getVarTable().values()) {
+            if (!list.contains(value.getVirtualReg()))
+                list.add(value.getVirtualReg());
+        }
+
+        var number = list.size();
+
+        if (!list.contains(0) && !method.isStaticMethod()){
+            number++;
+        }
+
+        code.append(number);
+        return code.toString();
+    }
+
+    private void incrementStackNumber(int n){
+        cur_stack += n;
+        lim_stack = Math.max(lim_stack, cur_stack);
     }
 
     private boolean between(int value, int lower, int upper) {

@@ -24,6 +24,11 @@ public class JasminTest {
     }
 
     @Test
+    public void test() {
+        testOllirToJasmin("pt/up/fe/comp/cp2/apps/test.ollir");
+    }
+
+    @Test
     public void ollirToJasminInvoke() {
         testOllirToJasmin("pt/up/fe/comp/cp2/jasmin/OllirToJasminInvoke.ollir");
     }
