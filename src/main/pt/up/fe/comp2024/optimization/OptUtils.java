@@ -60,6 +60,22 @@ public class OptUtils {
         return tempNumber -1;
     }
 
+    public static String getNextTemp() {
+
+        return getNextTemp("tmp");
+    }
+
+    public static String getNextTemp(String prefix) {
+
+        return prefix + getNextTempNum_();
+    }
+
+    public static int getNextTempNum_() {
+
+        return tempNumber +1;
+    }
+
+
 
 
     public static String toOllirType(JmmNode typeNode) {
