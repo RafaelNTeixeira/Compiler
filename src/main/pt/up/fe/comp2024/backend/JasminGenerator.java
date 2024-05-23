@@ -378,6 +378,7 @@ public class JasminGenerator {
             String ret = this.IincHandler(assign);
             if (ret != null) return ret;
         }
+         */
         else {
             if (reg > 3) {
                 storeType = switch (storeTypeName) {
