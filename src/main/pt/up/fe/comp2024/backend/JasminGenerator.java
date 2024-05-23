@@ -373,11 +373,10 @@ public class JasminGenerator {
         if(assign.getDest() instanceof ArrayOperand){
             code.append(getAssignArray(assign, reg));
         }
-        /*
         else if (assign.getRhs().getInstType() == InstructionType.BINARYOPER) {
             String ret = this.IincHandler(assign);
             if (ret != null) return ret;
-        } */
+        }
         else {
             if (reg > 3) {
                 storeType = switch (storeTypeName) {
