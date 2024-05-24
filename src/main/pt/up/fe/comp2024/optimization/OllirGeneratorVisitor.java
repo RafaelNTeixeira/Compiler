@@ -161,6 +161,15 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
             return code.toString();
         }
 
+        else if (node.getChild(0).getKind().equals("ArrayAccess")){
+            var type = ".i32";
+            var child = node.getChild(0);
+            code.append(OptUtils.getTemp() + type + ASSIGN + type + SPACE + child.getChild(1).get("value") + type + END_STMT);
+            code.append(child.getChild(0).get("name") + "[" + OptUtils.getCurrTemp() + type + "]" + type);
+            code.append(ASSIGN + type + SPACE + node.getChild(1).get("value") + type);
+            return code.toString();
+        }
+
 
         var retType = OptUtils.toOllirType(node.getJmmChild(0));
 
@@ -762,6 +771,15 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
     private String visitExpression(JmmNode node, Void unused){
         StringBuilder code = new StringBuilder();
 
+        boolean virtual = false;
+        boolean hasTemp = false;
+
+        for (var child : node.getChildren()){
+            if (child.getKind().equals("Length")){
+                hasTemp = true;
+                code.append(OptUtils.getTemp() + ".i32" + ASSIGN + ".i32 arraylength(" + child.getChild(0).get("name") + "array.i32).i32.i32" + END_STMT);
+            }
+        }
         if (node.getParent().getKind().equals("AssignStmt")){
             var type = OptUtils.toOllirType(node.getParent());
             code.append(OptUtils.getTemp() + type);
@@ -773,8 +791,17 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
             code.append(ASSIGN + type + SPACE);
         }
 
-        boolean virtual = false;
-        boolean hasTemp = false;
+        if (node.getChild(1).getKind().equals("ArrayAccess")){
+            var currTemp = OptUtils.getTemp();
+            hasTemp = true;
+            var type = ".i32";
+            var child = node.getChild(1);
+            code.append(OptUtils.getTemp() + type + ASSIGN + type + SPACE + child.getChild(1).get("value") + type + END_STMT);
+            code.append(currTemp + type + ASSIGN + type + SPACE + child.getChild(0).get("name") + "[" + OptUtils.getCurrTemp() + type + "]" + type + END_STMT);
+
+        }
+
+
         if (node.getChild(1).getKind().equals("BinaryExpr") || node.getChild(1).getKind().equals("BinaryOp") || node.getChild(1).getKind().equals("NewClass")){
             var str = visit(node.getChild(1));
             code.append(str);
@@ -812,18 +839,25 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
                     continue;
                 }
 
-                String type;
+                String type = "";
                 if (hasTemp){
-                    code.append(", " + OptUtils.getCurrTemp());
+                    if (child.getKind().equals("ArrayAccess")){
+                        code.append(", " + OptUtils.getPrevTemp());
+                    }
+                    else code.append(", " + OptUtils.getCurrTemp());
                     type = OptUtils.toOllirOpType(child);
+                    if (child.getKind().equals("Length") || child.getKind().equals("ArrayAccess")) type = ".i32";
                 }
                 else if (child.hasAttribute("name")) {
                     code.append(", " + child.get("name"));
                     type = OptUtils.toOllirType(child);
                 }
-                else {
+                else if (child.hasAttribute("value")){
                     code.append(", " + child.get("value"));
                     type = OptUtils.toOllirType(child);
+                }
+                else if (child.getKind().equals("Length")){
+                    code.append(", " + OptUtils.getTemp());
                 }
                 code.append(type);
 
