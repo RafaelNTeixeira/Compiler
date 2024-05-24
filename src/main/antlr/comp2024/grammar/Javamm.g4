@@ -45,12 +45,10 @@ ELSE : 'else' ;
 ELSEIF : 'else if' ;
 WHILE : 'while' ;
 FOR : 'for' ;
-MAIN: 'main' ;
-LENGHT: 'length' ;
 
 INTEGER : ([0] | [1-9][0-9]*) ;
-BOOL : ('false' | 'true');
 ID : [a-zA-Z_$][a-zA-Z$_0-9]* ;
+BOOL : ('false' | 'true');
 
 WS : [ \t\n\r\f]+ -> skip ;
 LINE_COMMENT : '//' .*? [\n\r] -> skip ;
@@ -95,7 +93,7 @@ methodDecl locals[boolean isPublic=false]
         type methodName=ID
         LPAREN (param (COMMA param)*)? RPAREN //
         LCURLY varDecl* stmt* RCURLY
-    | (PUBLIC)? STATIC VOID methodName=MAIN LPAREN param RPAREN
+    | (PUBLIC)? STATIC VOID methodName=ID LPAREN param RPAREN
               LCURLY varDecl* stmt* RCURLY
     ;
 
@@ -112,7 +110,7 @@ stmt
     | expr EQUALS expr SEMI #AssignStmt //
     | ID EQUALS expr SEMI #AssignVar //
     | RETURN expr SEMI #ReturnStmt //
-    | ID EQUALS LSQUARE expr RSQUARE EQUALS expr SEMI #AssignArray // isto é para quê???
+    | ID EQUALS LSQUARE expr RSQUARE EQUALS expr SEMI #AssignArray //
     ;
 
 expr
@@ -124,7 +122,8 @@ expr
     | NEW className=ID LPAREN (expr (COMMA expr)* )? RPAREN #NewClass //
     | expr LSQUARE expr RSQUARE #ArrayAccess //
     | LSQUARE ( expr ( COMMA expr )* )? RSQUARE #ArrayInit //
-    | expr DOT LENGTH #Length //
+    | expr DOT 'length' #Length //
+    | expr DOT ID #FunctionCall //
     | expr op=(MUL | DIV) expr #BinaryExpr //
     | expr op=(ADD | SUB) expr #BinaryExpr //
     | expr op=('<=' | '<' | '>' | '>=' | '==' | '!=' | '+=' | '-=' | '*=' | '/=') expr #BinaryOp //
