@@ -20,7 +20,6 @@ public class JmmSymbolTableBuilder {
         var importDecl = root.getChildren("ImportStatment"); // Nodes relacionados com declarações de imports
         var classDeclarations = root.getChildren("ClassDecl"); // Nodes relacionados com declarações de classes
         var fieldDeclarations = root.getDescendants("VarDecl"); // Retira tudo o que exista de VarDecl
-        var test = root.getChildren("ClassDecl");
         var methodDeclarations = root.getDescendants("MethodDecl"); // Retira tudo o que exista de declarações de métodos (funções)
 
         List <String> importNames = buildImports(importDecl);
@@ -88,49 +87,51 @@ public class JmmSymbolTableBuilder {
                     if (valueField.toString().equals("Array")) {
                         isArray = true;
                     }
-                    fieldName = valueField.getParent().get("name");
-                    switch (valueField.getKind()) {
-                        case "Boolean":
-                            type = new Type("boolean", isArray);
-                            symbol = new Symbol(type, fieldName);
-                            isArray = false;
-                            break;
-                        case "Integer":
-                            type = new Type("int", isArray);
-                            symbol = new Symbol(type, fieldName);
-                            isArray = false;
-                            break;
-                        case "Float":
-                            type = new Type("float", isArray);
-                            symbol = new Symbol(type, fieldName);
-                            isArray = false;
-                            break;
-                        case "Double":
-                            type = new Type("double", isArray);
-                            symbol = new Symbol(type, fieldName);
-                            isArray = false;
-                            break;
-                        case "String":
-                            type = new Type("String", isArray);
-                            symbol = new Symbol(type, fieldName);
-                            isArray = false;
-                            break;
-                        case "Void":
-                            type = new Type("void", isArray);
-                            symbol = new Symbol(type, fieldName);
-                            isArray = false;
-                            break;
-                        case "Id":
-                            type = new Type("id", isArray);
-                            symbol = new Symbol(type, fieldName);
-                            isArray = false;
-                            break;
-                        default:
-                            type = new Type(valueField.get("value"), isArray);
-                            symbol = new Symbol(type, fieldName);
-                            isArray = false;
+                    if (valueField.getParent().hasAttribute("name")) {
+                        fieldName = valueField.getParent().get("name");
+                        switch (valueField.getKind()) {
+                            case "Boolean":
+                                type = new Type("boolean", isArray);
+                                symbol = new Symbol(type, fieldName);
+                                isArray = false;
+                                break;
+                            case "Integer":
+                                type = new Type("int", isArray);
+                                symbol = new Symbol(type, fieldName);
+                                isArray = false;
+                                break;
+                            case "Float":
+                                type = new Type("float", isArray);
+                                symbol = new Symbol(type, fieldName);
+                                isArray = false;
+                                break;
+                            case "Double":
+                                type = new Type("double", isArray);
+                                symbol = new Symbol(type, fieldName);
+                                isArray = false;
+                                break;
+                            case "String":
+                                type = new Type("String", isArray);
+                                symbol = new Symbol(type, fieldName);
+                                isArray = false;
+                                break;
+                            case "Void":
+                                type = new Type("void", isArray);
+                                symbol = new Symbol(type, fieldName);
+                                isArray = false;
+                                break;
+                            case "Id":
+                                type = new Type("id", isArray);
+                                symbol = new Symbol(type, fieldName);
+                                isArray = false;
+                                break;
+                            default:
+                                type = new Type(valueField.get("value"), isArray);
+                                symbol = new Symbol(type, fieldName);
+                                isArray = false;
+                        }
+                        fields.add(symbol);
                     }
-                    fields.add(symbol);
                 }
             }
         }
@@ -147,7 +148,10 @@ public class JmmSymbolTableBuilder {
                 if (node.getKind().equals("Void")) continue;
                 if (node.getParent().get("methodName").equals("main")) {
                     isArray = true;
+                    if (node.getChildren().isEmpty()) continue;
                     JmmNode mainNode = node.getChildren().get(0);
+                    if (mainNode.getChildren().isEmpty()) continue;
+                    if (!mainNode.getChildren().get(0).hasAttribute("value")) continue;
                     var value = mainNode.getChildren().get(0).get("value");
                     type = new Type(getTypeName(value), isArray);
                     returnTypes.put(methodNode.get("methodName"), type);
@@ -156,6 +160,8 @@ public class JmmSymbolTableBuilder {
                 }
                 if (node.getKind().equals("Array")) {
                     isArray = true;
+                    if (node.getChildren().isEmpty()) continue;
+                    if (!node.getChildren().get(0).hasAttribute("value")) continue;
                     var value = node.getChildren().get(0).get("value");
                     type = new Type(getTypeName(value), isArray);
                     returnTypes.put(methodNode.get("methodName"), type);
@@ -174,9 +180,8 @@ public class JmmSymbolTableBuilder {
     private static Map<String, List<Symbol>> buildParams(List<JmmNode> methodDeclarations) {
         Map<String, List<Symbol>> paramNames = new HashMap<>();
 
-
         Type type = null;
-        Boolean isArray = false;
+        boolean isArray = false;
 
         for (JmmNode methodNode : methodDeclarations) {
             List<Symbol> symbols = new ArrayList<Symbol>();
@@ -184,7 +189,10 @@ public class JmmSymbolTableBuilder {
             for (JmmNode node : methodNode.getChildren("Param")) {
                 if (node.getParent().get("methodName").equals("main")) {
                     isArray = true;
+                    if (node.getChildren().isEmpty()) continue;
                     JmmNode mainNode = node.getChildren().get(0);
+                    if (mainNode.getChildren().isEmpty()) continue;
+                    if (!mainNode.getChildren().get(0).hasAttribute("value")) continue;
                     var value = mainNode.getChildren().get(0).get("value");
                     type = new Type(getTypeName(value), isArray);
                     symbol = new Symbol(type, mainNode.getParent().get("name"));
@@ -194,12 +202,21 @@ public class JmmSymbolTableBuilder {
                 }
                 if (node.getKind().equals("Array")) {
                     isArray = true;
+                    if (node.getChildren().isEmpty()) continue;
+                    if (node.getChildren().get(0).hasAttribute("value")) continue;
                     var value = node.getChildren().get(0).get("value");
                     type = new Type(getTypeName(value), isArray);
                     symbol = new Symbol(type, node.getChildren("name").get(0).toString());
                 }
                 if (node.hasAttribute("name")) {
-                    var value = node.getChildren().get(0).get("value");
+                    String value;
+                    if (!node.getChildren("Array").isEmpty()) {
+                        isArray = true;
+                        value = node.getChildren("Array").get(0).getChildren().get(0).get("value");
+                    }
+                    else {
+                        value = node.getChildren().get(0).get("value");
+                    }
                     type = new Type(getTypeName(value), isArray);
                     symbol = new Symbol(type, node.get("name"));
                 }
@@ -246,11 +263,15 @@ public class JmmSymbolTableBuilder {
             JmmNode localIsArray = locals.getChildren().get(0);
             if (localIsArray.toString().equals("Array")) {
                 isArray = true;
+                if (localIsArray.getChildren().isEmpty()) continue;
+                if (!localIsArray.getChildren().get(0).hasAttribute("value")) continue;
                 var value = localIsArray.getChildren().get(0).get("value");
                 type = new Type(getTypeName(value), isArray);
                 symbol = new Symbol(type, locals.get("name"));
 
             } else {
+                if (locals.getChildren().isEmpty()) continue;
+                if (!locals.getChildren().get(0).hasAttribute("value")) continue;
                 var value = locals.getChildren().get(0).get("value");
                 type = new Type(getTypeName(value), isArray);
                 symbol = new Symbol(type, locals.get("name"));
