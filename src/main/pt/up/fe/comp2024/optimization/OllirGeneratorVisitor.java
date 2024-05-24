@@ -644,20 +644,31 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
     private String visitIfCondition(JmmNode node, Void unused){
         StringBuilder code = new StringBuilder();
+        boolean isBinaryOp = false;
+
+        if(node.getChild(0).getKind().equals("BinaryOp")){
+            var binaryOpResult = visit(node.getChild(0));
+            code.append(binaryOpResult);
+            isBinaryOp = true;
+        }
+
 
         code.append("if(");
 
         if (node.getChild(0).hasAttribute("name")){
-            code.append(node.getChild(0).get("name") + ".bool)");
-
+            code.append(node.getChild(0).get("name") + ".bool");
         }
-        code.append(SPACE + "goto if_0" + END_STMT);
+        else if(isBinaryOp){
+            code.append(OptUtils.getCurrTemp() + ".bool");
+        }
 
-        var ifResult = visit(node.getChild(1).getChild(0).getChild(0));
+        code.append(")" + SPACE + "goto if_0" + END_STMT);
+
+        var ifResult = visit(node.getChild(2).getChild(0).getChild(0));
         code.append(ifResult);
         code.append("goto endif_0" + END_STMT);
         code.append("if_0:" + NL);
-        var elseResult = visit(node.getChild(2).getChild(0).getChild(0));
+        var elseResult = visit(node.getChild(1).getChild(0).getChild(0));
         code.append(elseResult);
         code.append("endif_0:" + NL);
 
