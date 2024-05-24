@@ -55,6 +55,7 @@ public class astOpValidator extends AnalysisVisitor {
         addVisit("BinaryExpr", this::visitBinaryExpr);
         addVisit("BinaryOp", this::visitBinaryOp);
         addVisit("Param", this::visitParam);
+        addVisit("Length", this::visitLength);
     }
 
     private Void visitProgram(JmmNode programNode, SymbolTable symbolTable) {
@@ -103,7 +104,14 @@ public class astOpValidator extends AnalysisVisitor {
             paramNode.put("type", "main");
         }
         else {
-            paramNode.put("type", paramNode.getChildren().get(0).get("value"));
+            if (!paramNode.getChildren("Array").isEmpty()) {
+                var arrayNode = paramNode.getChildren("Array").get(0);
+                paramNode.put("type", arrayNode.getChildren().get(0).get("value"));
+                paramNode.put("isArray", "true");
+            }
+            else {
+                paramNode.put("type", paramNode.getChildren().get(0).get("value"));
+            }
         }
         return null;
     }

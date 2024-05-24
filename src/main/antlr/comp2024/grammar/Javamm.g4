@@ -25,6 +25,7 @@ GREATER : '>' ;
 GE : '>=' ;
 COMMA : ',';
 NEW : 'new';
+LEN : 'length';
 DOT : '.';
 VAR_ARGS : '...';
 
@@ -110,7 +111,7 @@ stmt
     | expr EQUALS expr SEMI #AssignStmt //
     | ID EQUALS expr SEMI #AssignVar //
     | RETURN expr SEMI #ReturnStmt //
-    | ID EQUALS LSQUARE expr RSQUARE EQUALS expr SEMI #AssignArray //
+    | ID EQUALS LSQUARE expr RSQUARE EQUALS expr SEMI #AssignArray // isto é para quê???
     ;
 
 expr
@@ -122,8 +123,7 @@ expr
     | NEW className=ID LPAREN (expr (COMMA expr)* )? RPAREN #NewClass //
     | expr LSQUARE expr RSQUARE #ArrayAccess //
     | LSQUARE ( expr ( COMMA expr )* )? RSQUARE #ArrayInit //
-    | expr DOT 'length' #Length //
-    | expr DOT ID #FunctionCall //
+    | expr DOT LEN #Length //
     | expr op=(MUL | DIV) expr #BinaryExpr //
     | expr op=(ADD | SUB) expr #BinaryExpr //
     | expr op=('<=' | '<' | '>' | '>=' | '==' | '!=' | '+=' | '-=' | '*=' | '/=') expr #BinaryOp //

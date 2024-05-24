@@ -174,9 +174,8 @@ public class JmmSymbolTableBuilder {
     private static Map<String, List<Symbol>> buildParams(List<JmmNode> methodDeclarations) {
         Map<String, List<Symbol>> paramNames = new HashMap<>();
 
-
         Type type = null;
-        Boolean isArray = false;
+        boolean isArray = false;
 
         for (JmmNode methodNode : methodDeclarations) {
             List<Symbol> symbols = new ArrayList<Symbol>();
@@ -199,7 +198,14 @@ public class JmmSymbolTableBuilder {
                     symbol = new Symbol(type, node.getChildren("name").get(0).toString());
                 }
                 if (node.hasAttribute("name")) {
-                    var value = node.getChildren().get(0).get("value");
+                    String value;
+                    if (!node.getChildren("Array").isEmpty()) {
+                        isArray = true;
+                        value = node.getChildren("Array").get(0).getChildren().get(0).get("value");
+                    }
+                    else {
+                        value = node.getChildren().get(0).get("value");
+                    }
                     type = new Type(getTypeName(value), isArray);
                     symbol = new Symbol(type, node.get("name"));
                 }
