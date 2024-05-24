@@ -83,6 +83,10 @@ public class OptUtils {
         //TYPE.checkOrThrow(typeNode);
         String typeName;
         if (typeNode.hasAttribute("type")) typeName = typeNode.get("type");
+        else if (typeNode.hasAttribute("name")){
+            if (typeNode.get("name").equals("true") || typeNode.get("name").equals("false")) typeName = "bool";
+            else typeName = typeNode.get("name");
+        }
         else {
             typeName = typeNode.get("value");
         }
