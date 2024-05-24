@@ -197,7 +197,7 @@ public class JasminGenerator {
         return code.toString();
     }
 
-        private String getJasminType(Type type) {
+    private String getJasminType(Type type) {
         String jasminType;
         String typeName = type.getTypeOfElement().name();
 
@@ -372,40 +372,41 @@ public class JasminGenerator {
         String storeType;
         if(assign.getDest() instanceof ArrayOperand){
             code.append(getAssignArray(assign, reg));
+            return code.toString();
         }
-        /*
-        else if (assign.getRhs().getInstType() == InstructionType.BINARYOPER) {
-            String ret = this.IincHandler(assign);
-            if (ret != null) return ret;
-        } */
-        else {
-            if (reg > 3) {
-                storeType = switch (storeTypeName) {
-                    case "INT32", "BOOLEAN" -> "istore ";
-                    case "ARRAYREF", "STRING", "OBJECTREF", "THIS", "CLASS" -> "astore ";
-                    case "VOID" -> "store ";
-                    default -> throw new IllegalArgumentException("Unsupported type: " + storeTypeName);
-                };
-            } else {
-                storeType = switch (storeTypeName) {
-                    case "INT32", "BOOLEAN" -> "istore_";
-                    case "ARRAYREF", "STRING", "OBJECTREF", "THIS", "CLASS" -> "astore_";
-                    case "VOID" -> "store_";
-                    default -> throw new IllegalArgumentException("Unsupported type: " + storeTypeName);
-                };
-            }
 
-            int nStack;
-            nStack = switch (storeTypeName) {
-                case "INT32", "BOOLEAN" -> 3;
-                case "ARRAYREF", "STRING", "OBJECTREF", "THIS", "CLASS", "VOID" -> 1;
+        if (assign.getRhs().getInstType() == InstructionType.BINARYOPER) {
+            String ret = this.IincHandler(assign);
+            if (ret != null) return code.append(ret).toString();
+        }
+
+        if (reg > 3) {
+            storeType = switch (storeTypeName) {
+                case "INT32", "BOOLEAN" -> "istore ";
+                case "ARRAYREF", "STRING", "OBJECTREF", "THIS", "CLASS" -> "astore ";
+                case "VOID" -> "store ";
                 default -> throw new IllegalArgumentException("Unsupported type: " + storeTypeName);
             };
-            cur_stack -= nStack;
-
-            code.append(storeType).append(reg).append(NL);
-
+        } else {
+            storeType = switch (storeTypeName) {
+                case "INT32", "BOOLEAN" -> "istore_";
+                case "ARRAYREF", "STRING", "OBJECTREF", "THIS", "CLASS" -> "astore_";
+                case "VOID" -> "store_";
+                default -> throw new IllegalArgumentException("Unsupported type: " + storeTypeName);
+            };
         }
+
+        int nStack;
+        nStack = switch (storeTypeName) {
+            case "INT32", "BOOLEAN" -> 3;
+            case "ARRAYREF", "STRING", "OBJECTREF", "THIS", "CLASS", "VOID" -> 1;
+            default -> throw new IllegalArgumentException("Unsupported type: " + storeTypeName);
+        };
+        cur_stack -= nStack;
+
+        code.append(storeType).append(reg).append(NL);
+
+
         return code.toString();
     }
 
