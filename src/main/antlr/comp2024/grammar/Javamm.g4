@@ -46,6 +46,7 @@ ELSE : 'else' ;
 ELSEIF : 'else if' ;
 WHILE : 'while' ;
 FOR : 'for' ;
+MAIN: 'main' ;
 
 INTEGER : ([0] | [1-9][0-9]*) ;
 ID : [a-zA-Z_$][a-zA-Z$_0-9]* ;
@@ -94,7 +95,7 @@ methodDecl locals[boolean isPublic=false]
         type methodName=ID
         LPAREN (param (COMMA param)*)? RPAREN //
         LCURLY varDecl* stmt* RCURLY
-    | (PUBLIC)? STATIC VOID methodName=ID LPAREN param RPAREN
+    | (PUBLIC)? STATIC VOID methodName=MAIN LPAREN param RPAREN
               LCURLY varDecl* stmt* RCURLY
     ;
 
