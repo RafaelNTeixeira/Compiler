@@ -14,5 +14,4 @@
 
 ## Self-Assessment
 
-- We think our project deserves a 14 out of 20.
-
+- We think our project deserves a 15 out of 20.
