@@ -58,6 +58,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit("FunctionCall", this::visitExpression);
         addVisit("NewClass", this::visitNewClass);
         addVisit("BinaryOp", this::visitBinaryOp);
+        addVisit("IfCondition", this::visitIfCondition);
 
         setDefaultVisit(this::defaultVisit);
     }
@@ -127,6 +128,38 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
             return code.toString();
         }
 
+        else if (node.getChild(1).getKind().equals("Negate")){
+            var child = node.getChild(1);
+            var type = OptUtils.toOllirType(child.getChild(0));
+            code.append(OptUtils.getTemp() + type + ASSIGN + type + SPACE);
+            code.append(child.get("value") + type + SPACE);
+
+            if (child.getChild(0).hasAttribute("value")){
+                if (child.getChild(0).get("value").equals("true")){
+                    code.append("1");
+                }
+                else if (child.getChild(0).get("value").equals("false")){
+                    code.append("0");
+                }
+            }
+
+            code.append(type + END_STMT);
+            code.append(node.getChild(0).get("name") + type);
+            code.append(ASSIGN + type + SPACE);
+            code.append(OptUtils.getCurrTemp() + type);
+            return code.toString();
+        }
+
+        else if (node.getChild(1).getKind().equals("NewArray")){
+            var type = OptUtils.toOllirType(node.getChild(0));
+            code.append(OptUtils.getTemp() + type + ASSIGN + type + SPACE);
+            code.append(node.getChild(1).getChild(0).get("value") + type + END_STMT);
+
+            code.append(node.getChild(0).get("name") + ".array" + type + ASSIGN + ".array" + type + SPACE);
+            code.append("new(array, " + OptUtils.getCurrTemp() + type + ").array" + type);
+            return code.toString();
+        }
+
 
         var retType = OptUtils.toOllirType(node.getJmmChild(0));
 
@@ -160,10 +193,29 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         code.append(expr.getComputation());
         code.append("ret");
+        if(retType.isArray()){
+            code.append(".array");
+        }
         code.append(OptUtils.toOllirType(retType));
         code.append(SPACE);
 
-        code.append(expr.getCode());
+        if(retType.isArray()){
+            code.append(node.getChild(0).get("name"));
+            code.append(".array");
+            code.append(OptUtils.toOllirType(retType));
+        }
+
+        else {
+            code.append(expr.getCode());
+        }
+        if (node.getChild(0).getKind().equals("Bolean")){
+            if (node.getChild(0).get("value").equals("true")){
+                code.append("1" + OptUtils.toOllirType(retType));
+            }
+            else{
+                code.append("0" + OptUtils.toOllirType(retType));
+            }
+        }
 
         code.append(END_STMT);
 
@@ -214,7 +266,10 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
                     var funcCall = visit(child.getChild(0));
 
                     code.append(funcCall);
-
+                }
+                else if(child.getKind().equals("IfCondition")){
+                    var ifConditionResult = visit(child);
+                    code.append(ifConditionResult);
                 }
             }
             code.append("ret.V ;" + NL + R_BRACKET + NL);
@@ -491,205 +546,120 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         JmmNode left = node.getChild(0);
         JmmNode right = node.getChild(1);
 
-        if (left.getKind().equals("Parentesis")) leftStr = visit(left.getChild(0));
+        if (node.get("op").equals("&&")) {
 
-        if (right.getKind().equals("Parentesis")) rightStr = visit(right.getChild(0));
+            if (left.getKind().equals("Parentesis")) leftStr = visit(left.getChild(0));
 
-        if (Objects.equals(leftStr, "") && Objects.equals(rightStr, "")){
+            if (right.getKind().equals("Parentesis")) rightStr = visit(right.getChild(0));
 
-            code.append("if(");
+            if (Objects.equals(leftStr, "") && Objects.equals(rightStr, "")) {
 
-            if (node.getChild(0).get("value").equals("true")){
-                code.append(1 + retType);
+                code.append("if(");
+
+                if (node.getChild(0).get("value").equals("true")) {
+                    code.append(1 + retType);
+                } else if (node.getChild(0).get("value").equals("false")) {
+                    code.append(0 + retType);
+                }
+
+                code.append(") goto ");
+                code.append("true_0" + END_STMT); //MUDAR
+
+                code.append(OptUtils.getTemp() + retType);
+                code.append(ASSIGN + retType + SPACE);
+
+                if (node.getChild(0).get("value").equals("true")) {
+                    code.append(0 + retType + END_STMT);
+                } else if (node.getChild(0).get("value").equals("false")) {
+                    code.append(1 + retType + END_STMT);
+                }
+
+                code.append("goto " + "end_0" + END_STMT); //MUDAR
+                code.append("true_0:" + NL); // MUDAR
+
             }
-            else if (node.getChild(0).get("value").equals("false")){
-                code.append(0 + retType);
+
+            var currTemp = OptUtils.getCurrTemp();
+
+            String temp = "";
+            if (!right.getKind().equals("Bolean")) {
+                temp = visit(right);
             }
 
-            code.append(") goto ");
-            code.append("true_0" + END_STMT); //MUDAR
-
-            code.append(OptUtils.getTemp() + retType);
+            code.append(temp);
+            code.append(currTemp + retType);
             code.append(ASSIGN + retType + SPACE);
 
-            if (node.getChild(0).get("value").equals("true")){
-                code.append(0 + retType + END_STMT);
+            if (temp.equals("")) {
+                if (node.getChild(0).get("value").equals("true")) {
+                    code.append(1 + retType);
+                } else if (node.getChild(0).get("value").equals("false")) {
+                    code.append(0 + retType);
+                }
+            } else {
+                code.append(OptUtils.getCurrTemp() + retType + END_STMT);
             }
-            else if (node.getChild(0).get("value").equals("false")){
-                code.append(1 + retType + END_STMT);
-            }
-
-            code.append("goto " + "end_0" + END_STMT); //MUDAR
-            code.append("true_0:" + NL); // MUDAR
-
+            code.append("end_0:" + NL);
         }
 
-        var currTemp = OptUtils.getCurrTemp();
-
-
-        String temp = "";
-        if (!right.getKind().equals("Bolean")){
-            temp = visit(right);
-        }
-
-        code.append(temp);
-        code.append(currTemp + retType);
-        code.append(ASSIGN + retType + SPACE);
-
-        if (temp.equals("")){
-            if (node.getChild(0).get("value").equals("true")){
-                code.append(1 + retType);
-            }
-            else if (node.getChild(0).get("value").equals("false")){
-                code.append(0 + retType);
-            }
-        }
         else{
-            code.append(OptUtils.getCurrTemp() + retType + END_STMT);
-        }
-        code.append("end_0:" + NL);
-
-        return code.toString();
-    }
-
-    private String visitBinaryOp_(JmmNode node, Void unused){
-        StringBuilder code = new StringBuilder();
-        String retType = OptUtils.toOllirOpType(node);
-        String leftStr = "";
-        String rightStr = "";
-
-        JmmNode left = node.getChild(0);
-        JmmNode right = node.getChild(1);
-
-        if (left.getKind().equals("Parentesis")) leftStr = visit(left.getChild(0));
-        else leftStr = visit(left);
-
-        if (right.getKind().equals("Parentesis")) rightStr = visit(right.getChild(0));
-        else rightStr = visit(right);
-
-        if (Objects.equals(leftStr, "") && Objects.equals(rightStr, "")) {
-
-            // APPEND IFS
             code.append("if(");
 
-            if (node.getChild(0).get("value").equals("true")){
-                code.append(1 + retType);
+            if (left.hasAttribute("name")){
+                code.append(left.get("name") + ".i32 ");
             }
-            else if (node.getChild(0).get("value").equals("false")){
-                code.append(0 + retType);
+            else {
+                code.append(left.get("value") + OptUtils.toOllirType(left) + SPACE);
             }
-            else{
-                //code.append()
+            code.append(node.get("op") + retType + SPACE);
+
+            if (right.hasAttribute("name")){
+                code.append(right.get("name") + ".i32 ");
             }
+            else {
+                code.append(right.get("value") + OptUtils.toOllirType(right) + ")" + SPACE);
+            }
+            code.append("goto true_0" + END_STMT);
 
-            code.append(") goto true_0" + END_STMT);
 
 
-            code.append(OptUtils.getTemp() + retType);
+            var temp = OptUtils.getTemp();
+            code.append(temp + retType);
             code.append(ASSIGN + retType + SPACE);
-
-            if (node.getChild(0).get("value").equals("true")){
-                code.append(0 + retType + END_STMT);
-            }
-            else if (node.getChild(0).get("value").equals("false")){
-                code.append(1 + retType + END_STMT);
-            }
+            code.append("0" + retType + END_STMT);
 
             code.append("goto end_0" + END_STMT);
             code.append("true_0:" + NL);
 
-            code.append(OptUtils.getCurrTemp() + retType);
+            code.append(temp + retType);
             code.append(ASSIGN + retType + SPACE);
-
-            if (node.getChild(0).get("value").equals("true")){
-                code.append(0 + retType + END_STMT);
-            }
-            else if (node.getChild(0).get("value").equals("false")){
-                code.append(1 + retType + END_STMT);
-            }
+            code.append("1" + retType + END_STMT);
 
             code.append("end_0:" + NL);
 
-
         }
 
-        else if (Objects.equals(leftStr, "")){
+        return code.toString();
+    }
 
-            // APPEND IFS
-            code.append("if(");
+    private String visitIfCondition(JmmNode node, Void unused){
+        StringBuilder code = new StringBuilder();
 
-            if (node.getChild(0).get("value").equals("true")){
-                code.append(1 + retType);
-            }
-            else if (node.getChild(0).get("value").equals("false")){
-                code.append(0 + retType);
-            }
+        code.append("if(");
 
-            code.append(") goto true_0" + END_STMT);
-
-            code.append(OptUtils.getCurrTemp() + retType);
-            code.append(ASSIGN + retType + SPACE);
-
-            if (node.getChild(0).get("value").equals("true")){
-                code.append(1 + retType);
-            }
-            else if (node.getChild(0).get("value").equals("false")){
-                code.append(0 + retType);
-            }
-
-
-            var currTemp = OptUtils.getCurrTemp();
-            code.append(rightStr);
-            code.append(OptUtils.getTemp() + retType);
-            code.append(ASSIGN + retType + SPACE);
-
-
-            if (node.getChild(0).hasAttribute("value")) {
-                if (node.getChild(0).get("value").equals("true")){
-                    code.append(1 + retType + SPACE);
-                }
-                else if (node.getChild(0).get("value").equals("false")){
-                    code.append(0 + retType + SPACE);
-                }
-                else {
-                    code.append(node.getChild(0).get("value") + retType + SPACE);
-                }
-            }
-            else if (node.getChild(0).hasAttribute("name")){
-                code.append(node.getChild(0).get("name") + retType + SPACE);
-            }
-
-            code.append(node.get("op") + retType + SPACE);
-            code.append(currTemp + retType + END_STMT);
+        if (node.getChild(0).hasAttribute("name")){
+            code.append(node.getChild(0).get("name") + ".bool)");
 
         }
+        code.append(SPACE + "goto if_0" + END_STMT);
 
-        else if (Objects.equals(rightStr, "")){
-            var currTemp = OptUtils.getCurrTemp();
-            code.append(rightStr);
-            code.append(OptUtils.getTemp() + retType);
-            code.append(ASSIGN + retType + SPACE);
-            code.append(currTemp + retType + SPACE);
-            code.append(node.get("op") + retType + SPACE);
-
-            if (node.getChild(1).hasAttribute("value")) {
-                code.append(node.getChild(1).get("value") + retType + END_STMT);
-            }
-            else if (node.getChild(1).hasAttribute("name")){
-                code.append(node.getChild(1).get("name") + retType + END_STMT);
-            }
-        }
-
-        else{
-            var currTemp = OptUtils.getCurrTemp();
-            var prevTemp = OptUtils.getPrevTemp();
-            code.append(leftStr + rightStr);
-            code.append(OptUtils.getTemp() + retType);
-            code.append(ASSIGN + retType + SPACE);
-            code.append(prevTemp + retType + SPACE);
-            code.append(node.get("op") + retType + SPACE);
-            code.append(currTemp + retType + END_STMT);
-        }
+        var ifResult = visit(node.getChild(1).getChild(0).getChild(0));
+        code.append(ifResult);
+        code.append("goto endif_0" + END_STMT);
+        code.append("if_0:" + NL);
+        var elseResult = visit(node.getChild(2).getChild(0).getChild(0));
+        code.append(elseResult);
+        code.append("endif_0:" + NL);
 
         return code.toString();
     }

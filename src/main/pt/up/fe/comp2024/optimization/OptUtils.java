@@ -102,6 +102,7 @@ public class OptUtils {
             case "boolean" -> "bool";
             case "void" -> "V";
             case "array" -> "array.i32";
+            case "int[]" -> "array.i32";
             default -> typeName;
         };
 
