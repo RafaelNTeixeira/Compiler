@@ -1,4 +1,4 @@
-class Test {
+class ioPlus {
 	public static void main(String[] args) {
 		int i;
 		i = 2;

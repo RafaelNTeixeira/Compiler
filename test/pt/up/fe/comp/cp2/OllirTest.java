@@ -34,7 +34,7 @@ public class OllirTest {
 
     @Test
     public void test() {
-        testJmmCompilation("pt/up/fe/comp/cp2/ollir/Test.jmm",
+        testJmmCompilation("pt/up/fe/comp/cp2/ollir/ioPlus.jmm",
                 this::compileMethodInvocation);
     }
 
