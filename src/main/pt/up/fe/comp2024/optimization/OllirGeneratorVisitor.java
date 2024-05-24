@@ -59,6 +59,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit("NewClass", this::visitNewClass);
         addVisit("BinaryOp", this::visitBinaryOp);
         addVisit("IfCondition", this::visitIfCondition);
+        addVisit("WhileLoop", this::visitWhileLoop);
 
         setDefaultVisit(this::defaultVisit);
     }
@@ -271,6 +272,10 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
                     var ifConditionResult = visit(child);
                     code.append(ifConditionResult);
                 }
+                else if(child.getKind().equals("WhileLoop")){
+                    var whileLoopResult = visit(child);
+                    code.append(whileLoopResult);
+                }
             }
             code.append("ret.V ;" + NL + R_BRACKET + NL);
             return code.toString();
@@ -308,7 +313,14 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
             else if(child.getKind().equals("Expression")){
                 var funcCall = visit(child.getChild(0));
                 code.append(funcCall);
-
+            }
+            else if(child.getKind().equals("IfCondition")){
+                var ifConditionResult = visit(child);
+                code.append(ifConditionResult);
+            }
+            else if(child.getKind().equals("WhileLoop")){
+                var whileLoopResult = visit(child);
+                code.append(whileLoopResult);
             }
         }
 
@@ -675,7 +687,76 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         return code.toString();
     }
 
+    private String visitWhileLoop(JmmNode node, Void unused){
+        StringBuilder code = new StringBuilder();
 
+        code.append("if (");
+        String type = ".bool";
+
+        var child0 = node.getChild(0);
+        if (child0.getKind().equals("BinaryOp")) {
+            String eleType = ".i32";
+            if (child0.get("op").equals("&&")) eleType = ".bool";
+
+            if (child0.getChild(0).hasAttribute("value")) {
+                code.append(child0.getChild(0).get("value") + eleType + SPACE);
+            } else if (child0.getChild(0).hasAttribute("name")) {
+                code.append(child0.getChild(0).get("name") + eleType + SPACE);
+            }
+
+            code.append(child0.get("op") + type + SPACE);
+
+            if (child0.getChild(1).hasAttribute("value")) {
+                code.append(child0.getChild(1).get("value") + eleType);
+            } else if (child0.getChild(1).hasAttribute("name")) {
+                code.append(child0.getChild(1).get("name") + eleType);
+            }
+        }
+
+        code.append(") goto whilebody_0" + END_STMT);
+        code.append("goto endwhile_0" + END_STMT);
+        code.append("whilebody_0:" + NL);
+
+        for (var child : node.getChild(1).getChildren()){
+            String result;
+            if (child.getKind().equals("Expression")){
+                result = visit(child.getChild(0));
+                code.append(result);
+            }
+            else{
+                result = visit(child);
+                code.append(result);
+                code.append(END_STMT);
+            }
+
+        }
+
+        code.append("if (");
+
+        if (child0.getKind().equals("BinaryOp")) {
+            String eleType = ".i32";
+            if (child0.get("op").equals("&&")) eleType = ".bool";
+
+            if (child0.getChild(0).hasAttribute("value")) {
+                code.append(child0.getChild(0).get("value") + eleType + SPACE);
+            } else if (child0.getChild(0).hasAttribute("name")) {
+                code.append(child0.getChild(0).get("name") + eleType + SPACE);
+            }
+
+            code.append(child0.get("op") + type + SPACE);
+
+            if (child0.getChild(1).hasAttribute("value")) {
+                code.append(child0.getChild(1).get("value") + eleType);
+            } else if (child0.getChild(1).hasAttribute("name")) {
+                code.append(child0.getChild(1).get("name") + eleType);
+            }
+        }
+
+        code.append(") goto whilebody_0" + END_STMT);
+        code.append("endwhile_0:" + NL);
+
+        return code.toString();
+    }
 
 
 
