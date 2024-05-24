@@ -3,7 +3,7 @@ class ArrayAccess {
 
 	public int foo(int[] a) {
 		int result;
-	
+
 		result = a[0];
 		result = a[1] + a[2];
 		result = result + a[3];
