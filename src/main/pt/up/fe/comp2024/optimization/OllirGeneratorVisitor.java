@@ -626,13 +626,12 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
             code.append(node.get("op") + retType + SPACE);
 
             if (right.hasAttribute("name")){
-                code.append(right.get("name") + ".i32 ");
+                code.append(right.get("name") + ".i32)" + SPACE);
             }
             else {
                 code.append(right.get("value") + OptUtils.toOllirType(right) + ")" + SPACE);
             }
             code.append("goto true_0" + END_STMT);
-
 
 
             var temp = OptUtils.getTemp();
