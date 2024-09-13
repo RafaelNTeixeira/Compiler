@@ -12,6 +12,3 @@
 - João Pedro Moreira Costa - 33.33 %
 - Rafael Neves Teixeira - 33.33 %
 
-## Self-Assessment
-
-- We think our project deserves a 15 out of 20.
