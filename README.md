@@ -1,5 +1,5 @@
 # Compiler
 
-- Developd a compiler using Java.
+- Compiler developed using Java.
 
 **Programming Language:** Java 
